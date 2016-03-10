@@ -9,7 +9,7 @@ module support.
 
 ## Features
 ```
-- MVP
+- MVC
 - Multiple database support(Mysql, postgreSQL)
 - Configurable database sharding(Partition Support)
 - Master-slave support
@@ -41,31 +41,31 @@ disk and make a symbolic link to your lib directory
 ```
 directory structure
 / project folder
-|-- lib             <- framework, library folder, make sure your libraries put here
-|-- protected       <- source code
-|   |-- config      <- config
-|   |   |-- common  <- common part
-|   |   |-- develop <- develop
-|   |   |-- staging <- staging
-|   |   |-- production <- production
+|-- lib                             <- framework, library folder, make sure your libraries put here
+|-- protected                       <- source code
+|   |-- config                      <- config
+|   |   |-- common                  <- common part
+|   |   |-- develop                 <- develop
+|   |   |-- staging                 <- staging
+|   |   |-- production              <- production
 |   |
-|   |-- modules      <- modules
+|   |-- modules                     <- modules
 |   |   |-- testModule
-|   |       |-- controller
-|   |       |-- model
-|   |       |-- logic
-|   |-- plugins      <- customize plugins
-|   |-- script       <- batch scripts
-|   |-- sql          <- sql scripts
-|   |-- view         <- view folder
+|   |       |-- controller          <- controller
+|   |       |-- model               <- business model
+|   |       |-- logic               <- business logic
+|   |-- plugins                     <- customize plugins
+|   |-- script                      <- batch scripts
+|   |-- sql                         <- sql scripts
+|   |-- view                        <- view folder
 |
-|-- Crawler.php      <- main Application class
-|-- bootstrap.php    <- php settings or other
-|-- public           <- open for public(Document Root)
+|-- Crawler.php                     <- main Application class
+|-- bootstrap.php                   <- php settings or other
+|-- public                          <- open for public(Document Root)
     |-- index.php
-    |-- img          <- images files
-    |-- css          <-- css files
-    |-- js           <-- javascript files
+    |-- img                         <- images files
+    |-- css                         <-- css files
+    |-- js                          <-- javascript files
 ```
 
 example:
