@@ -9,18 +9,18 @@ namespace view;
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-use context\RuntimeContext,
-    exception\ExceptionCode,
-    \Smarty,
-    info\InfoCollector,
-    exception\ViewException,
-    view\ViewInterface;
+use exception\ExceptionCode;
+use exception\ViewException;
+use info\InfoCollector;
+use Smarty;
+use String;
+use view\ViewInterface;
 
 require dirname(FRAMEWORK_ROOT_DIR) . DIRECTORY_SEPARATOR . 'Smarty/libs/Smarty.class.php';
 
 class SmartyView extends Smarty implements ViewInterface {
 
-    protected $_output_encode = 'utf-8';
+    protected $_output_encode = String::ENCODE_UTF8;
 
     /**
      * construct
@@ -30,7 +30,7 @@ class SmartyView extends Smarty implements ViewInterface {
         // These automatically get set with each new instance.
         parent::__construct();
         $this->caching = Smarty::CACHING_LIFETIME_CURRENT;
-   }
+    }
 
     /**
      * initialize
@@ -44,37 +44,41 @@ class SmartyView extends Smarty implements ViewInterface {
      */
     public function init($config = null) {
 
-        $allowed_settings = array(
+        $allowed_settings = [
             'template_dir', 'compile_dir', 'cache',
             'plugins_dir', 'left_delimiter',
-            'right_delimiter', 'output_encode'
-        );
+            'right_delimiter', 'output_encode',
+        ];
         $config = $config['settings'];
         if (empty($config)) {
-            return ;
+            return;
         }
         foreach ($config as $key => $value) {
             if (empty($value) || !in_array_pro($key, $allowed_settings)) {
-                continue ;
+                continue;
             }
             switch ($key) {
-                case 'cache':
-                    $this->caching = empty($value['enabled']) ? parent::CACHING_OFF : parent::CACHING_LIFETIME_SAVED;
-                    $this->cache_lifetime = empty($value['expire_time']) ? 3600 : $value['expire_time'];
-                    $cache_dir = empty($value['dir']) ? '/tmp' : $value['dir'];
-                    $this->setCacheDir($cache_dir);
-                    break;
-                case 'output_encode':
-                    $this->_output_encode = strtolower($value);     break;
-                case 'compile_dir':
-                    $this->setCompileDir($value);                   break;
-                case 'template_dir':
-                    $this->setTemplateDir($value);                  break;
-                case 'plugins_dir':
-                    $this->addPluginsDir($value);                   break;
-                default:
-                    $this->$key = $value;
-                    break;
+            case 'cache':
+                $this->caching        = empty($value['enabled']) ? parent::CACHING_OFF : parent::CACHING_LIFETIME_SAVED;
+                $this->cache_lifetime = empty($value['expire_time']) ? 3600 : $value['expire_time'];
+                $cache_dir            = empty($value['dir']) ? '/tmp' : $value['dir'];
+                $this->setCacheDir($cache_dir);
+                break;
+            case 'output_encode':
+                $this->_output_encode = $value;
+                break;
+            case 'compile_dir':
+                $this->setCompileDir($value);
+                break;
+            case 'template_dir':
+                $this->setTemplateDir($value);
+                break;
+            case 'plugins_dir':
+                $this->addPluginsDir($value);
+                break;
+            default:
+                $this->$key = $value;
+                break;
             }
             // message
             __add_info(sprintf('view initialized: %s, %s', $key, var_export($value, true)),
@@ -111,9 +115,9 @@ class SmartyView extends Smarty implements ViewInterface {
             return '';
         }
         $is_template_exist = $this->checkIsTemplateExist($template_file);
-        if(!$is_template_exist) {
+        if (!$is_template_exist) {
             throw new ViewException(
-                'view template not exists: '  . $template_file,
+                'view template not exists: ' . $template_file,
                 ExceptionCode::VIEW_TEMPLATE_NOT_FOUND
             );
         }
@@ -138,8 +142,8 @@ class SmartyView extends Smarty implements ViewInterface {
         }
         $this->muteExpectedErrors();
         $output = $this->fetch($template_file, $cache_id, $compile_id);
-        if ($this->_output_encode != 'utf-8') {
-            $output = mb_convert_encoding($output, $this->_output_encode, 'UTF-8');
+        if ($this->_output_encode != String::ENCODE_UTF8) {
+            $output = String::convert2UTF8($output, String::ENCODE_UTF8);
         }
         $this->unmuteExpectedErrors();
         return $output;
@@ -150,12 +154,12 @@ class SmartyView extends Smarty implements ViewInterface {
      * @return bool
      */
     private function checkIsTemplateExist($template_file) {
-        $template_dirs = $this->getTemplateDir();
+        $template_dirs     = $this->getTemplateDir();
         $is_template_exist = false;
-        foreach($template_dirs as $template_dir) {
+        foreach ($template_dirs as $template_dir) {
             if (is_file($template_dir . $template_file)) {
                 $is_template_exist = true;
-                break ;
+                break;
             }
         }
         return $is_template_exist;

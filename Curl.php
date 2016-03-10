@@ -156,7 +156,10 @@ class Curl {
                 $var = explode('&', $var);
             }
             $url_part_array = parse_url($url);
-            $var_tmp = explode('&', $url_part_array['query']);
+            $var_tmp = array();
+            if(isset($url_part_array['query'])) {
+                $var_tmp = explode('&', $url_part_array['query']);
+            }
             $var = array_merge($var_tmp, $var);
             $set_curl_post_options[CURLOPT_POSTFIELDS] = $var;
             $this->setCurlOption($this->_curl_list[$resource_id], $set_curl_post_options, true);

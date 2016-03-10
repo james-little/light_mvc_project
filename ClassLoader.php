@@ -12,7 +12,7 @@
  * @example
  *
  *     $class_loader = new ClassLoader();
- *     $class_loader->addScanPath(%PROJECT_DIR%);
+ *     ClassLoader::addScanPath(%PROJECT_DIR%);
  *     $class = ClassLoader::loadClass('\user\logic\UserLogic');
  *
  * @author koketsu <jameslittle.private@gmail.com>
@@ -21,10 +21,10 @@
 
 class ClassLoader {
 
-    private static $_class_map = array();
-    private static $class_path_map = array();
+    private static $_class_map       = array();
+    private static $class_path_map   = array();
     private static $use_include_path = false;
-    private static $scan_path = array();
+    private static $scan_path        = array();
 
     /**
      * __construct
@@ -36,15 +36,15 @@ class ClassLoader {
      * Turns on searching the include path for class files.
      * @param bool $user_include_path
      */
-    public function setUseIncludePath($user_include_path) {
+    public static function setUseIncludePath($user_include_path) {
         self::$use_include_path = (bool) $user_include_path;
-        $inclue_path_dirs = explode(PATH_SEPARATOR, ini_get('include_path'));
-        if(!empty($inclue_path_dirs)) {
+        $inclue_path_dirs       = explode(PATH_SEPARATOR, ini_get('include_path'));
+        if (!empty($inclue_path_dirs)) {
             foreach ($inclue_path_dirs as $inclue_path_dir) {
                 if (self::$use_include_path) {
-                    $this->addScanPath($inclue_path_dir);
+                    self::addScanPath($inclue_path_dir);
                 } else {
-                    $this->removeScanPath($inclue_path_dir);
+                    self::removeScanPath($inclue_path_dir);
                 }
             }
         }
@@ -54,14 +54,14 @@ class ClassLoader {
      * for classes.
      * @return bool
      */
-    public function getUseIncludePath() {
+    public static function getUseIncludePath() {
         return self::$use_include_path;
     }
     /**
      * add scan dir
      * @param string $scan_path
      */
-    public function addScanPath($scan_path) {
+    public static function addScanPath($scan_path) {
         if (is_dir($scan_path)) {
             self::$scan_path[$scan_path] = '';
         }
@@ -70,7 +70,7 @@ class ClassLoader {
      * remove scan path
      * @param string $scan_path
      */
-    public function removeScanPath($scan_path) {
+    public static function removeScanPath($scan_path) {
         if (array_key_exists($scan_path, self::$scan_path)) {
             unset(self::$scan_path);
         }
@@ -98,11 +98,11 @@ class ClassLoader {
 
         if ($class === null) {
             self::$_class_map = array();
-            return ;
+            return;
         }
         $file_path = self::getClassFilePath($class);
         if ($file_path === false) {
-            return ;
+            return;
         }
         if (array_key_exists($file_path, self::$_class_map[$file_path])) {
             unset(self::$_class_map[$file_path]);
@@ -116,7 +116,7 @@ class ClassLoader {
             return true;
         }
         $file_path = self::getClassFilePath($class);
-        if($file_path === false) {
+        if ($file_path === false) {
             return false;
         }
         include $file_path;

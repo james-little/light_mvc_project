@@ -1,8 +1,7 @@
 <?php
 namespace queue\processor;
 
-use exception\QueueException,
-    queue\processor\rule\QueueProcessorParserRule;
+use queue\processor\rule\QueueProcessorParserRule;
 
 
 /**

@@ -1,10 +1,9 @@
 <?php
-
 namespace resource\db;
 
-use exception\ExceptionCode;
-
-use exception\DbException,
+use ClassLoader,
+    exception\ExceptionCode,
+    exception\DbException,
     resource\db\driver\DbDriverMysql,
     resource\db\command\DbCommand;
 
@@ -60,7 +59,7 @@ class Db {
      */
     public function applyConfig($table_name, $config) {
         if (empty($config) || empty($table_name)) {
-        	return ;
+            return ;
         }
         $config_key = $this->getConfigKey($config);
         $this->config[$config_key] = $config;
@@ -84,7 +83,7 @@ class Db {
         $driver = null;
         switch ($driver_name) {
             case 'mysql':
-                $driver = \ClassLoader::loadClass('\resource\db\driver\DbDriverMysql');
+                $driver = ClassLoader::loadClass('\resource\db\driver\DbDriverMysql');
                 break;
             case 'postgresql':
 //              $driver = new DbDriverMysql($config);

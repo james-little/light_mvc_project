@@ -18,17 +18,18 @@ class ResourcePool {
      * constructor
      */
     protected function __construct(){
-        $this->_resources = array();
+        $this->_resources = [];
     }
     /**
      * singleton
      * @return Context
      */
     public static function getInstance(){
-        if(!static::$_instance){
-            static::$_instance = new static();
+        if(self::$_instance !== null){
+            return self::$_instance;
         }
-        return static::$_instance;
+        self::$_instance = new static();
+        return self::$_instance;
     }
 
     /**
@@ -61,7 +62,13 @@ class ResourcePool {
      * @param string $key
      */
     public function hasResource($type, $key) {
-        return isset($this->_resources[$type][$key]);
+        if(!array_key_exists($type, $this->_resources)) {
+            return false;
+        }
+        if(!array_key_exists($key, $this->_resources[$type])) {
+            return false;
+        }
+        return true;
     }
     /**
      * get resource from pool
@@ -75,19 +82,16 @@ class ResourcePool {
         }
         return $this->_resources[$type][$key];
     }
-
     /**
      * get resource key
-     * @param string $adapter
      * @param array $config
      * @return string|mixed
      */
-    public function getResourceKey($type, array $resource_config) {
+    public function getResourceKey(array $resource_config) {
         if (empty($resource_config)) {
             return '';
         }
-        $key = $type . '_' . serialize($resource_config);
-        return str_replace('.', '_', $key);
+        return md5(_serialize($resource_config));
     }
 
 }

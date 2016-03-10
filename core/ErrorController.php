@@ -1,10 +1,11 @@
 <?php
 namespace core;
 
+use context\RuntimeContext;
+use core\Controller;
+use Exception;
 use exception\ExceptionErrorConverter;
-use core\Controller,
-    view\ViewInterface,
-    Exception;
+use view\ViewInterface;
 
 /**
  * ErrorController
@@ -17,42 +18,56 @@ use core\Controller,
  **/
 abstract class ErrorController extends Controller {
 
+    // exception error converter
     protected $_error_convertor;
-
     // default error template
     protected $_view_file_path = 'error/error.tpl';
+    protected $_with_trace     = false;
 
     /**
      * get error exception
      */
     protected function getException() {
-        return $this->_controller_render_params['render_error_exception'];
-    }
 
+        if (isset($this->_controller_render_params['render_error_exception'])) {
+            return $this->_controller_render_params['render_error_exception'];
+        }
+        return RuntimeContext::getInstance()->getData('render_error_exception');
+    }
     /**
      * handle error exception
      */
     final public function handle() {
-        if(!$this->_error_convertor) {
+
+        if (!$this->_error_convertor) {
             $this->_error_convertor = ExceptionErrorConverter::getInstance();
         }
-        $this->_handle($this->getException());
+        if ($this->isAjaxRequest()) {
+            $this->_view_type = ViewInterface::VIEW_TYPE_JSON;
+        }
+        $exception = $this->getException();
+        $this->_handle($exception);
         $this->setErrorViewTemplate();
     }
 
     /**
      * handle exception
-     * @param \Exception $e
+     * @param Exception $e
      */
     protected function _handle(Exception $e) {
+
         $error_code = $this->_error_convertor->get($e->getCode());
-        if($error_code === null) {
+        if ($error_code === null) {
             throw $e;
         }
-        $this->setViewDefaultParams(array(
+        $message = $e->getMessage();
+        if ($this->_with_trace) {
+            $message .= $e->getTraceAsString();
+        }
+        $this->setViewDefaultParams([
             'error_code' => $error_code,
-            'message' => $e->getMessage()
-        ));
+            'message'    => $message,
+        ]);
     }
 
     /**
@@ -61,7 +76,8 @@ abstract class ErrorController extends Controller {
      * @return void
      */
     protected function setViewDefaultParams($data) {
-        if($this->_view_type == ViewInterface::VIEW_TYPE_JSON) {
+
+        if ($this->_view_type == ViewInterface::VIEW_TYPE_JSON) {
             $this->setViewParam('is_success', (int) ($data['error_code'] == 0));
         }
         $this->setViewParam('error_code', $data['error_code']);

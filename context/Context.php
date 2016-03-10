@@ -10,25 +10,24 @@ namespace context;
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-use exception\ExceptionCode,
-    exception\AppException;
 
 abstract class Context {
 
     protected static $_instance;
-    private $_context = array();
+    private $context;
 
     /**
      * constructor
      */
-    protected function __construct(){}
-
+    protected function __construct() {
+        $this->context = [];
+    }
     /**
      * singleton
      * @return Context
      */
-    public static function getInstance(){
-        if(static::$_instance !== null){
+    public static function getInstance() {
+        if (static::$_instance !== null) {
             return static::$_instance;
         }
         static::$_instance = new static();
@@ -56,7 +55,7 @@ abstract class Context {
 
         if (is_string($content_key)) {
             // get as key => value
-            return array_key_exists($content_key, $this->_context) ? $this->_context[$content_key] : null;
+            return array_key_exists($content_key, $this->context) ? $this->context[$content_key] : null;
         } elseif (is_array($content_key)) {
             return $this->_getData($content_key, $params);
         }
@@ -71,12 +70,15 @@ abstract class Context {
      */
     protected function _getData($callable, $params, $force_update = false) {
 
-        if(!is_callable($callable, false)) return null;
-        $key = $this->getKey($callable, $params);
-        if(!array_key_exists($key, $this->_context) || $force_update) {
-            $this->_context[$key] = call_user_func_array($callable, $params);
+        if (!is_callable($callable, false)) {
+            return null;
         }
-        return $this->_context[$key];
+
+        $key = $this->getKey($callable, $params);
+        if (!array_key_exists($key, $this->context) || $force_update) {
+            $this->context[$key] = call_user_func_array($callable, $params);
+        }
+        return $this->context[$key];
     }
     /**
      * set data to application context
@@ -91,8 +93,8 @@ abstract class Context {
         if (empty($content_data)) {
             $content_data = array();
         }
-        $content_key = $this->getKey($callable, $params);
-        $this->_context[$content_key] = $content_data;
+        $content_key                 = $this->getKey($callable, $params);
+        $this->context[$content_key] = $content_data;
         return true;
     }
     /**
@@ -110,7 +112,7 @@ abstract class Context {
     public function setData($content_key, $content_value) {
         if (is_string($content_key)) {
             // use as key => value type
-            $this->_context[$content_key] = $content_value;
+            $this->context[$content_key] = $content_value;
             return true;
         }
         if (is_array($content_key)) {
@@ -131,23 +133,23 @@ abstract class Context {
     public function clearData($content_key, $content_value = null) {
         if (is_string($content_key)) {
             // use as key => value type
-            unset($this->_context[$content_key]);
-            return ;
+            unset($this->context[$content_key]);
+            return;
         }
         if (is_array($content_key)) {
             // use as object / method
             $content_key = $this->getKey($content_key, $content_value);
-            unset($this->_context[$content_key]);
-            return ;
+            unset($this->context[$content_key]);
+            return;
         }
-        return ;
+        return;
     }
     /**
      * clear all data from application context
      * @return void
      */
     public function clearAllData() {
-        $this->_context = array();
+        $this->context = [];
     }
     /**
      * get key for data stored in the application context
@@ -155,13 +157,15 @@ abstract class Context {
      * @param mixed $params
      * @return string
      */
-    protected function getKey($callable, $params){
+    protected function getKey($callable, $params) {
         if (is_string($callable)) {
             $name = 'global_method';
         } else {
             is_callable($callable, false, $name);
         }
-        if ($params) return $name . '_' . serialize($params);
+        if ($params) {
+            return $name . '_' . serialize($params);
+        }
         return $name;
     }
 }

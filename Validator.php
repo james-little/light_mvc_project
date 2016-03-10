@@ -59,15 +59,16 @@ class Validator {
      */
     public function validate($data_rule_map) {
         if (empty($data_rule_map)) {
-            return false;
+            return [];
         }
         $check_result_list = array();
         foreach ($data_rule_map as $variable_name => $data_rule_list) {
             $data_value = array_key_exists('value', $data_rule_list) ? $data_rule_list['value'] : null;
             $data_rule_str = array_key_exists('rule', $data_rule_list) ? $data_rule_list['rule'] : '';
             $data_type = array_key_exists('type', $data_rule_list) ? $data_rule_list['type'] : '';
-            $reg = array_key_exists('reg', $data_rule_list) ? $data_rule_list['reg'] : '';
-            $check_result_list[$variable_name] = $this->checkValue($data_value, $data_rule_str, $data_type, $reg);
+            $reg = array_key_exists('reg', $data_rule_list) ? $data_rule_list['reg'] : null;
+            $func = array_key_exists('func', $data_rule_list) ? $data_rule_list['func'] : null;
+            $check_result_list[$variable_name] = $this->checkValue($data_value, $data_rule_str, $data_type, $reg, $func);
         }
         return $check_result_list;
     }
@@ -78,9 +79,10 @@ class Validator {
      * @param string $data_rule_str
      * @param string $data_type
      * @param string | null $reg
+     * @param string | array | null $func
      * @return bool
      */
-    protected function checkValue($data_value, $data_rule_str, $data_type, $reg = null) {
+    protected function checkValue($data_value, $data_rule_str, $data_type, $reg = null, $func = null) {
 
         // check data value by data type
         if (!$this->checkDataType($data_value, $data_type)) {
@@ -93,6 +95,16 @@ class Validator {
         // check data value by regluar expression(advanced)
         if (is_string($reg) && strlen($reg) > 0) {
             if (!$this->checkDataReg($data_value, $reg)) {
+                return false;
+            }
+        }
+        // check data by customized function
+        if(
+            (is_array($func) && method_exists($func[0], $func[1]))
+            ||
+            (is_string($func) && function_exists($func))
+        ) {
+            if(!call_user_func_array($func, [$data_value, $data_type])) {
                 return false;
             }
         }
@@ -128,12 +140,14 @@ class Validator {
             }
             // operator
             $tmp = array();
-            if (preg_match('#(len|count)? *[!<>=]{1,2} *[^<>=]+#', $data_rule, $tmp)) {
+            if (preg_match('#(mb_len|len|count)? *[!<>=]{1,2} *[^<>=]+#', $data_rule, $tmp)) {
                 $command = null;
                 switch ($data_type) {
                     case Datatype::DATA_TYPE_STRING:
                         if (!empty($tmp[1]) && $tmp[1] == 'len') {
                             $data_value_str = 'strlen($data_value)';
+                        } else if(!empty($tmp[1]) && $tmp[1] == 'mb_len') {
+                            $data_value_str = 'mb_strlen($data_value)';
                         } else {
                             $data_value_str = "'{$data_value}'";
                         }

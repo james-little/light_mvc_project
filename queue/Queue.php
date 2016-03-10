@@ -98,8 +98,6 @@ class Queue {
      * Add a request data to queue
      * @param array $user_data
      *     . int     user_id
-     *     . int     pokelabo_id
-     *     . string  terminal_tracking_id
      * @param array $url_data
      *     . string url
      *     . array params
@@ -193,7 +191,6 @@ class Queue {
         }
         return $this->_adapter->confirmUnprocess($queue_id);
     }
-
     /**
      * Update specified request withe error code
      * @param int $queue_id
@@ -207,6 +204,20 @@ class Queue {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
         return $this->_adapter->updateErrorCode($queue_id, $error_code, $http_code);
+    }
+    /**
+     * Update queue data
+     * @param int $queue_id
+     * @param array $queue_data
+     * @throws QueueException
+     * @return bool true if updated
+     */
+    public function update($queue_id, $queue_data) {
+        if (!$queue_id) return false;
+        if (!$this->_adapter) {
+            throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
+        }
+        return $this->_adapter->update($queue_id, $queue_data);
     }
     /**
      * release request lock

@@ -4,7 +4,8 @@
  * Robbe
  * =======================================================
  * use robbe to split chinese string
- * http://git.oschina.net/lionsoul/robbe
+ * https://code.google.com/p/robbe/wiki/RobbeFunctions
+ *
  *
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0

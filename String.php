@@ -9,54 +9,84 @@
  **/
 class String {
 
-    static $DBC = Array(
-        '０' , '１' , '２' , '３' , '４' ,
-        '５' , '６' , '７' , '８' , '９' ,
-        'Ａ' , 'Ｂ' , 'Ｃ' , 'Ｄ' , 'Ｅ' ,
-        'Ｆ' , 'Ｇ' , 'Ｈ' , 'Ｉ' , 'Ｊ' ,
-        'Ｋ' , 'Ｌ' , 'Ｍ' , 'Ｎ' , 'Ｏ' ,
-        'Ｐ' , 'Ｑ' , 'Ｒ' , 'Ｓ' , 'Ｔ' ,
-        'Ｕ' , 'Ｖ' , 'Ｗ' , 'Ｘ' , 'Ｙ' ,
-        'Ｚ' , 'ａ' , 'ｂ' , 'ｃ' , 'ｄ' ,
-        'ｅ' , 'ｆ' , 'ｇ' , 'ｈ' , 'ｉ' ,
-        'ｊ' , 'ｋ' , 'ｌ' , 'ｍ' , 'ｎ' ,
-        'ｏ' , 'ｐ' , 'ｑ' , 'ｒ' , 'ｓ' ,
-        'ｔ' , 'ｕ' , 'ｖ' , 'ｗ' , 'ｘ' ,
-        'ｙ' , 'ｚ' , '－' , '　'  , '：' ,
-        '．' , '，' , '／' , '％' , '＃' ,
-        '！' , '＠' , '＆' , '（' , '）' ,
-        '＜' , '＞' , '＂' , '＇' , '？' ,
-        '［' , '］' , '｛' , '｝' , '＼' ,
-        '｜' , '＋' , '＝' , '＿' , '＾' ,
-        '￥' , '￣' , '｀'
-    );
-    static $SBC = Array( //halfwidth
-        '0', '1', '2', '3', '4',
-        '5', '6', '7', '8', '9',
-        'A', 'B', 'C', 'D', 'E',
-        'F', 'G', 'H', 'I', 'J',
-        'K', 'L', 'M', 'N', 'O',
-        'P', 'Q', 'R', 'S', 'T',
-        'U', 'V', 'W', 'X', 'Y',
-        'Z', 'a', 'b', 'c', 'd',
-        'e', 'f', 'g', 'h', 'i',
-        'j', 'k', 'l', 'm', 'n',
-        'o', 'p', 'q', 'r', 's',
-        't', 'u', 'v', 'w', 'x',
-        'y', 'z', '-', ' ', ':',
-        '.', ',', '/', '%', '#',
-        '!', '@', '&', '(', ')',
-        '<', '>', '"', '\'','?',
-        '[', ']', '{', '}', '\\',
-        '|', '+', '=', '_', '^',
-        '$', '~', '`'
-    );
+    const ENCODE_UTF32     = 1;
+    const ENCODE_UTF16     = 2;
+    const ENCODE_UTF8      = 3;
+    const ENCODE_ASCII     = 4;
+    const ENCODE_EUCJP     = 5;
+    const ENCODE_SJIS      = 6;
+    const ENCODE_ISO8859_1 = 7;
+    const ENCODE_BIG5      = 8;
+    const ENCODE_GB18030   = 9;
+    const ENCODE_GBK       = 10;
+
     /**
-     * convert full width Japanese words to half width
-     * @param string $string
+     * convert encoding
+     * @param  string $string
+     * @param  int $from_encode
+     * @param  int $to_encode
      * @return string
      */
-    static public function convertHalfWidth($string) {
-        return str_replace(self::$DBC, self::$SBC, $string);
+    public static function convertEncode($string, $from_encode, $to_encode) {
+        if (empty($string)) {
+            return '';
+        }
+        $from_encode = self::convertEncodingName($from_encode);
+        $to_encode   = self::convertEncodingName($to_encode);
+
+        if (!$from_encode || !$to_encode) {
+            return null;
+        }
+        if (extension_loaded('iconv')) {
+            return iconv($from_encode, $to_encode . '//IGNORE', $string);
+        }
+        return mb_convert_encoding($string, 'UTF-8', $from_encode);
+    }
+    /**
+     * convert encoding to utf8
+     * @param  string $string
+     * @param  int $from_encode
+     * @param  int $to_encode
+     * @return string
+     */
+    public static function convert2UTF8($string, $from_encode) {
+        if (empty($string)) {
+            return '';
+        }
+        if ($from_encode == self::ENCODE_UTF8) {
+            return $string;
+        }
+        $from_encode = self::convertEncodingName($from_encode);
+        return self::convertEncode($string, $from_encode, self::ENCODE_UTF8);
+    }
+    /**
+     * convert encode to encoding name
+     * @param  int $encode
+     * @return string
+     */
+    public static function convertEncodingName($encode) {
+        switch ($encode) {
+        case self::ENCODE_UTF32:
+            return 'UTF-32';
+        case self::ENCODE_UTF16:
+            return 'UTF-16';
+        case self::ENCODE_UTF8:
+            return 'UTF-8';
+        case self::ENCODE_ASCII:
+            return 'ASCII';
+        case self::ENCODE_EUCJP:
+            return 'EUC-JP';
+        case self::ENCODE_SJIS:
+            return 'SJIS';
+        case self::ENCODE_ISO8859_1:
+            return 'ISO-8859-1';
+        case self::ENCODE_BIG5:
+            return 'BIG-5';
+        case self::ENCODE_GB18030:
+            return 'GB18030';
+        case self::ENCODE_GBK:
+            return 'GBK';
+        }
+        return '';
     }
 }

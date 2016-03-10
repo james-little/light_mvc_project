@@ -9,9 +9,90 @@
 
 class Upload {
 
-    // List of allowed file extensions separated by "|"
-    protected $allowed_files = 'gif|jpg|jpeg|png';
-//     protected $allowed_files = 'gif|jpg|jpeg|png|txt|zip|rar|tar|gz|mov|flv|mpg|mpeg|mp4|wmv|avi|mp3|wav|ogg';
+    /** List of allowed file extensions separated by "|"
+     * suuported files:
+     * gif|jpg|jpeg|png|txt|zip|rar|tar|gz|mov|flv|mpg|mpeg|mp4|wmv|avi|mp3|wav|ogg
+     */
+    private $allowed_files;
+    // set default max size to 8MB
+    private $max_size;
+
+    /**
+     * __construct
+     */
+    public function __construct() {
+        $this->allowed_files = 'gif|jpg|jpeg|png';
+        // set default max size to 8MB
+        $this->max_size = 8 * 1024 * 1024;
+    }
+
+    /**
+     * set upload max size
+     * @param int $max_size [description]
+     */
+    public function setMaxSize($max_size) {
+        if(!$max_size) {
+            return $this;
+        }
+        $this->max_size = $max_size;
+        return $this;
+    }
+    /**
+     * set allowed files
+     * @param string $allow_files
+     */
+    public function setAllowedFiles($allow_files) {
+        if(!$allow_files) {
+            return $allow_files;
+        }
+        $this->allowed_files = $allow_files;
+        return $this;
+    }
+    /**
+     * get upload files information
+     * this function would format the upload file info from:
+     * array(
+     *     'name' => array('0' => 'a.txt', '1' => 'b.txt'),
+     *     'type' => array('0' => 'text/plain', '1' => 'text/plain'),
+     *     'tmp_name' => array('0' => '/tmp/phpYzdqkD', '1' => '/tmp/phpeEwEWG'),
+     *     'error' => array('0' => 0, '1' => 0),
+     *     'size' => array('0' => 123, '1' => 456),
+     * )
+     *
+     * into :
+     * array(
+     *     '0' => array(
+     *         'name' => 'a.txt',
+     *         'type' => 'text/plain',
+     *         'tmp_name' => '/tmp/phpYzdqkD',
+     *         'error' => 0,
+     *         'size' => 123,
+     *     ),
+     *     '1' => array(
+     *         'name' => 'b.txt',
+     *         'type' => 'text/plain',
+     *         'tmp_name' => '/tmp/phpeEwEWG',
+     *         'error' => 0,
+     *         'size' => 456,
+     *     ),
+     * )
+     * @param string $name : file element name in the HTML
+     * @return array
+     */
+    public static function getUploadFiles($name) {
+        if(empty($name) || !isset($_FILES[$name])) {
+            return [];
+        }
+        $len = count($_FILES[$name]['name']);
+        $upload_files = [];
+        for($i = 0; $i < $len; $i ++) {
+            foreach ($_FILES[$name] as $key => $val) {
+                $upload_files[$i][$key] = $val[$i];
+            }
+        }
+        return $upload_files;
+    }
+
     /**
      * Try to Upload the given file returning the filename on success
      *
@@ -19,39 +100,62 @@ class Upload {
      * @param string $dir destination directory
      * @param integer $size maximum size allowed (can also be set in php.ini or server config)
      */
-    public function upload($file, $dir, $size = false) {
+    public function upload($file, $des_dir, $custom_name = null, $is_override = true) {
         // Invalid upload?
-        if(!isset($file['tmp_name'], $file['name'], $file['error'], $file['size']) || $file['error'] != UPLOAD_ERR_OK) {
-            return false;
+        if(!isset($file['tmp_name'], $file['name'], $file['error'], $file['size'])) {
+            return ['success' => false, 'filename' => ''];
+        }
+        if(!is_uploaded_file($file['tmp_name'])) {
+            return ['success' => false, 'filename' => ''];
+        }
+        if($file['error'] != UPLOAD_ERR_OK) {
+            return ['success' => false, 'filename' => ''];
+        }
+        $tmp_upload_dir = ini_get('upload_tmp_dir');
+        if(filesize($tmp_upload_dir . '/' . $file['tmp_name']) != $file['size']) {
+            return ['success' => false, 'filename' => ''];
         }
         // File to large?
-        if($size && $size > $file['size']) {
-            return false;
+        if($this->max_size < $file['size']) {
+            return ['success' => false, 'filename' => ''];
         }
         // Create $basename, $filename, $dirname, & $extension variables
-        extract(array_merge(pathinfo($file['name']), array('extension' => '')));
-        // Make the name file system safe
-        $filename = sanitize($filename, false);
+        extract(array_merge(['extension' => ''], mb_pathinfo($file['name'])));
         // We must have a valid name and file type
-        if(empty($filename) || empty($extension)) return false;
+        if(empty($filename) || empty($extension)) {
+            return ['success' => false, 'filename' => ''];
+        }
         $extension = strtolower($extension);
         // Don't allow just any file!
-        if(!$this->allowed_file($extension)) return false;
+        if(!$this->allowed_file($extension)) {
+            return ['success' => false, 'filename' => ''];
+        }
         // Make sure we can use the destination directory
-        directory_make_usable($dir);
-        // Create a unique name if we don't want files overwritten
-        $tmp_upload_dir = ini_get('upload_tmp_dir');
-        $etag = $this->geteTag($tmp_upload_dir . '/' . $file['tmp_name']);
-        if ($etag[0] === null) {
-            // error occurs when $etag[0] is null
-            return false;
+        if(mkdir_r($des_dir) === false) {
+            return ['success' => false, 'filename' => ''];
         }
-        $etag = $etag[1] . '.' . $extension;
+        $des_file_name = '';
+        if($custom_name) {
+            $des_file_name = "{$des_dir}/{$custom_name}.{$extension}";
+        } else {
+            // Create a unique name if we don't want files overwritten
+            $etag = $this->geteTag($tmp_upload_dir . '/' . $file['tmp_name']);
+            if ($etag[0] === null) {
+                // error occurs when $etag[0] is null
+                return ['success' => false, 'filename' => ''];
+            }
+            $des_file_name = "{$des_dir}/{$etag[0]}.{$extension}";
+        }
+        if(!$is_override && is_file($des_file_name)) {
+            @unlink($file['tmp_name']);
+            return ['success' => true, 'filename' => $des_file_name];
+        }
         // Move the file to the correct location
-        if(move_uploaded_file($file['tmp_name'], $dir . $etag)) {
-            return $etag;
+        if(move_uploaded_file($file['tmp_name'], $des_file_name)) {
+            @chmod($des_file_name, 0777);
+            return ['success' => true, 'filename' => $des_file_name];
         }
-        return false;
+        return ['success' => false, 'filename' => ''];
     }
     /**
      * Is the file extension allowed
@@ -85,7 +189,7 @@ class Upload {
      * @param mixed $a
      */
     private function packArray($v, $a) {
-        return call_user_func_array('pack', array_merge(array($v),(array)$a));
+        return call_user_func_array('pack', array_merge([$v],(array)$a));
     }
     /**
      * block count
@@ -104,10 +208,10 @@ class Upload {
         $sha1_str = sha1($fdata, true);
         $err = error_get_last();
         if ($err != null) {
-            return array(null, $err);
+            return [null, $err];
         }
         $byte_array = unpack('C*', $sha1_str);
-        return array($byte_array, null);
+        return [$byte_array, null];
     }
     /**
      * get etag of file
@@ -115,32 +219,32 @@ class Upload {
      */
     public function geteTag($filename) {
         if (!is_file($filename)) {
-            return array(null, ErrorCode::ERROR_UPLOAD_TMPFILE_OPEN_FAILED);
+            return [null, ErrorCode::ERROR_UPLOAD_TMPFILE_OPEN_FAILED];
         }
         $fhandler = fopen($filename, 'r');
         $err = error_get_last();
         if ($err != null) {
-            return array(null, ErrorCode::ERROR_UPLOAD_TMPFILE_OPEN_FAILED);
+            return [null, ErrorCode::ERROR_UPLOAD_TMPFILE_OPEN_FAILED];
         }
         $fstat = fstat($fhandler);
         $fsize = $fstat['size'];
         $block_cnt = $this->blockCount($fsize);
-        $sha1_buf = array();
+        $sha1_buf = [];
         if ($block_cnt <= 1) {
             $sha1_buf[] = 0x16;
             list($sha1_code, $err) = $this->calSha1($fhandler);
             if ($err != null) {
-                return array(null, ErrorCode::ERROR_UPLOAD_TMPFILE_READ_FAILED);
+                return [null, ErrorCode::ERROR_UPLOAD_TMPFILE_READ_FAILED];
             }
             fclose($fhandler);
             $sha1_buf = array_merge($sha1_buf, $sha1_code);
         } else {
             $sha1_buf[] = 0x96;
-            $sha1_block_buf = array();
+            $sha1_block_buf = [];
             for ($i=0; $i < $block_cnt; $i++) {
                 list($sha1_code, $err) = $this->calSha1($fhandler);
                 if ($err != null) {
-                    return array(null, ErrorCode::ERROR_UPLOAD_TMPFILE_READ_FAILED);
+                    return [null, ErrorCode::ERROR_UPLOAD_TMPFILE_READ_FAILED];
                 }
                 $sha1_block_buf = array_merge($sha1_block_buf, $sha1_code);
             }
@@ -152,6 +256,6 @@ class Upload {
             $sha1_buf = array_merge($sha1_buf, $sha1_final);
         }
         $etag = url_safe_base64_encode($this->packArray('C*', $sha1_buf));
-        return array($etag, null);
+        return [$etag, null];
     }
 }

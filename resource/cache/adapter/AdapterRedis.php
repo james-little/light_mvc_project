@@ -8,33 +8,36 @@ namespace resource\cache\adapter;
  * @version 1.0
  **/
 
-use resource\cache\adapter\CacheAdapterInterface,
-    exception\CacheException,
-    exception\ExceptionCode,
-    info\InfoCollector,
-    \Redis;
+use exception\CacheException;
+use exception\ExceptionCode;
+use info\InfoCollector;
+use Redis;
+use resource\cache\adapter\CacheAdapterInterface;
+use resource\ResourcePool;
 
 class AdapterRedis implements CacheAdapterInterface {
 
     protected $_redis;
-    private $default_ttl = 0;
-    private $retry_timeout = 2;
-    private $timeout = 2;
-    private $prefix;
-    private $dbname;
-    private $passwd;
-    private $host;
-    private $port;
+    private $config;
 
     /**
      * get memcache connection
-     * @return \Memcache
+     * @return Redis
      */
     public function getConnection() {
         if (!extension_loaded('redis')) {
             return null;
         }
+        $resource_type = 'redis';
+        $resource_pool = ResourcePool::getInstance();
+        $resource_key  = $resource_pool->getResourceKey($this->config);
+        $redis         = $resource_pool->getResource($resource_type, $resource_key);
+        if ($redis) {
+            return $redis;
+        }
         $redis = new Redis();
+        $redis = $this->initialize($redis);
+        $resource_pool->registerResource($resource_type, $resource_key, $redis);
         return $redis;
     }
     /**
@@ -42,12 +45,12 @@ class AdapterRedis implements CacheAdapterInterface {
      * @throws CacheException
      */
     public function bindConnection($connection) {
-        if (!$connection instanceof \Redis) {
+        if (!$connection instanceof Redis) {
             throw new CacheException(
                 'connection type not match. needed: Redis, given: ' . get_class($connection),
                 ExceptionCode::CACHE_ACCESS_OBJ_ERROR);
         }
-        $this->_redis = $this->initialize($connection);
+        $this->_redis = $connection;
     }
     /**
      * initialize redis
@@ -55,68 +58,78 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return Redis
      */
     private function initialize($redis) {
-        if($this->port) {
-            if($redis->pconnect($this->host, $this->port, $this->timeout, NULL, $this->retry_timeout) === false) {
+        if ($this->checkIsUnixSocket($this->config)) {
+            if ($redis->pconnect($this->config['host']) === false) {
+                // unix socket
                 throw new CacheException(
-                    'redis connection failed: ' . $this->host . ':' . $this->port,
+                    'redis connection failed: ' . $this->config['host'],
                     ExceptionCode::REDIS_CONNECTION_ERROR);
             }
         } else {
-            if($redis->pconnect($this->host) === false) {
-                // unix socket
+            if ($redis->pconnect($this->config['host'], $this->config['port'], $this->config['timeout'], NULL,
+                $this->config['retry_timeout']) === false) {
                 throw new CacheException(
-                    'redis connection failed: ' . $this->host,
+                    'redis connection failed: ' . $this->config['host'] . ':' . $this->config['port'],
                     ExceptionCode::REDIS_CONNECTION_ERROR);
             }
         }
         $redis->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
-        $redis->select($this->dbname);
-        if($this->prefix) {
-            $redis->setOption(Redis::OPT_PREFIX, $this->prefix);
+        $redis->select($this->config['dbname']);
+        if ($this->config['prefix']) {
+            $redis->setOption(Redis::OPT_PREFIX, $this->config['prefix']);
         }
-        if($this->passwd && $redis->auth($this->passwd) === false) {
+        if ($this->config['password'] != '' && $redis->auth($this->config['password']) === false) {
             throw new CacheException(
-                'redis auth failed: ' . $this->host . ':' . $this->passwd,
+                'redis auth failed: ' . $this->config['host'] . ':' . $this->config['password'],
                 ExceptionCode::REDIS_AUTH_ERROR);
         }
         return $redis;
     }
-
+    /**
+     * check is host & port or unix socket
+     * @param  array $config
+     * @return bool
+     */
+    private function checkIsUnixSocket($config) {
+        if (substr($config['host'], 0, 1) == '/') {
+            return true;
+        }
+        return false;
+    }
+    /**
+     * get ready
+     * @return void
+     */
+    protected function getReady() {
+        $this->_redis->select($this->config['dbname']);
+        if ($this->config['password'] != '') {
+            $this->_redis->auth($this->config['password']);
+        }
+    }
     /**
      * apply config
      * @param array $config
      * @throws CacheException
      */
     public function applyConfig($config) {
-        if (empty($config)) return;
-        if(empty($config['host'])) {
+
+        if (empty($config) || empty($config['host'])) {
             throw new CacheException('host empty',
                 ExceptionCode::CACHE_ACCESS_OBJ_ERROR);
         }
-        $this->host = $config['host'];
-        if(substr($this->host, 0, 1) != '/') {
-            // if host is not unix socket, then port is needed
-            $this->port = empty($config['port']) ? 6379 : $config['port'];
+        $redis_config         = [];
+        $redis_config['host'] = $config['host'];
+        if (!$this->checkIsUnixSocket($config)) {
+            $redis_config['port'] = empty($config['port']) ? 6379 : $config['port'];
         }
-        $this->dbname = empty($config['dbname']) ? 0 : $config['dbname'];
-        if(!empty($config['prefix'])) {
-            $this->prefix = $config['prefix'];
-        }
-        if(!empty($config['password'])) {
-            $this->passwd = $config['password'];
-        }
-        if(!empty($config['default_ttl'])) {
-            $this->default_ttl = $config['default_ttl'];
-        }
-        if(!empty($config['connection_timeout'])) {
-            $this->connection_timeout = $config['connection_timeout'] * 1000;
-        }
-        if(!empty($config['timeout'])) {
-            $this->timeout = $config['timeout'];
-        }
-        if(!empty($config['retry_timeout'])) {
-            $this->retry_timeout = $config['retry_timeout'];
-        }
+        $redis_config['dbname']             = empty($config['dbname']) ? 0 : $config['dbname'];
+        $redis_config['prefix']             = empty($config['prefix']) ? '' : $config['prefix'];
+        $redis_config['password']           = empty($config['password']) ? '' : $config['password'];
+        $redis_config['default_ttl']        = empty($config['default_ttl']) ? 0 : $config['default_ttl'];
+        $redis_config['timeout']            = empty($config['timeout']) ? 3 : $config['timeout'];
+        $redis_config['connection_timeout'] = empty($config['connection_timeout']) ? 3000 : $config['connection_timeout'] * 1000;
+        $redis_config['retry_timeout']      = empty($config['retry_timeout']) ? 3 : $config['retry_timeout'];
+        $this->config                       = $redis_config;
     }
     /**
      * get cache value by key
@@ -124,9 +137,17 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return string
      */
     public function get($key) {
-        if (!$this->_redis) return false;
-        $result = $this->_redis->get($key);
-        if($result === false) {
+        if (!$this->_redis) {
+            return false;
+        }
+
+        $this->getReady();
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        $result = $this->_redis->get($array['key']);
+        if ($result === false) {
             $result = null;
         }
         return $result;
@@ -139,7 +160,11 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return boolean
      */
     public function add($key, $val, $expire_time = -1) {
-        return $this->set($key, $val, $expire_time);
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        return $this->set($array['key'], $val, $expire_time);
     }
     /**
      * set value by key
@@ -149,12 +174,20 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return boolean
      */
     public function set($key, $val, $expire_time = -1) {
-        if (!$this->_redis) return false;
-        if ($expire_time < 0) {
-            $expire_time = $this->default_ttl;
+        if (!$this->_redis) {
+            return false;
         }
-        $result = $this->_redis->setex($key, $expire_time, convert_string($val));
-        if($result === false) {
+
+        $this->getReady();
+        if ($expire_time < 0) {
+            $expire_time = $this->config['default_ttl'];
+        }
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        $result = $this->_redis->setex($array['key'], $expire_time, convert_string($val));
+        if ($result === false) {
             __add_info('key write to server failed: ' . $key,
                 InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_ERR);
         }
@@ -179,8 +212,16 @@ class AdapterRedis implements CacheAdapterInterface {
      *         false when failed
      */
     public function increment($key, $step = 1) {
-        if (!$this->_redis) return false;
-        return $this->_redis->incrBy($key, $step);
+        if (!$this->_redis) {
+            return false;
+        }
+
+        $this->getReady();
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        return $this->_redis->incrBy($array['key'], $step);
     }
     /**
      * decrease some value to specified value by key
@@ -191,8 +232,16 @@ class AdapterRedis implements CacheAdapterInterface {
      *         false when failed
      */
     public function decrement($key, $step = 1) {
-        if (!$this->_redis) return false;
-        return $this->_redis->decrBy($key, $step);
+        if (!$this->_redis) {
+            return false;
+        }
+
+        $this->getReady();
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        return $this->_redis->decrBy($array['key'], $step);
     }
     /**
      * delete value from cache
@@ -200,8 +249,18 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return boolean
      */
     public function delete($key) {
-        if (!$this->_redis) return false;
-        return $this->_redis->delete($key);
+        if (!$this->_redis) {
+            return false;
+        }
+
+        __add_info(sprintf('cache delete. %s', $key),
+            InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+        $this->getReady();
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        return $this->_redis->delete($array['key']);
     }
     /**
      * set new expire time to key
@@ -210,11 +269,19 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return boolean
      */
     public function touch($key, $expire_time = -1) {
-        if (!$this->_redis) return false;
-        if ($expire_time < 0) {
-            $expire_time = $this->default_ttl;
+        if (!$this->_redis) {
+            return false;
         }
-        return $this->_redis->setTimeout($key, $expire_time);
+
+        $this->getReady();
+        if ($expire_time < 0) {
+            $expire_time = $this->config['default_ttl'];
+        }
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        return $this->_redis->setTimeout($array['key'], $expire_time);
     }
     /**
      * check if the key exists in the cache
@@ -222,16 +289,41 @@ class AdapterRedis implements CacheAdapterInterface {
      * @return boolean
      */
     public function isKeyExist($key) {
-        if (!$this->_redis) return false;
-        return $this->get($key) !== null;
+        if (!$this->_redis) {
+            return false;
+        }
+
+        $this->getReady();
+        $array = $this->parseKey($key);
+        if (isset($array['db'])) {
+            $this->_redis->select($array['db']);
+        }
+        return $this->get($array['key']) !== null;
     }
     /**
      * flush cache server
      * @return boolean
      */
     public function flush() {
-        if (!$this->_redis) return false;
+        if (!$this->_redis) {
+            return false;
+        }
+
+        $this->getReady();
         return $this->_redis->flushDB();
     }
-
+    /**
+     * parse key
+     * @param string $key
+     * @return array
+     */
+    private function parseKey($key) {
+        $pos = strpos($key, '|');
+        if ($pos === false) {
+            return ['key' => $key];
+        }
+        $dbname   = substr($key, 0, $pos);
+        $real_key = substr($key, $pos + 1);
+        return ['db' => $dbname, 'key' => $real_key];
+    }
 }

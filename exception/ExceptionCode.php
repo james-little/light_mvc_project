@@ -197,6 +197,41 @@ class ExceptionCode {
      */
     const WORD_SPLIT_DIC_DIR_ERROR = 603;
     /**
+     * image
+     * @var int
+     */
+    const IMAGE_DEFAULT_ERROR = 700;
+    /**
+     * image object empty
+     * @var int
+     */
+    const IMAGE_OBJECT_EMPTY = 701;
+    /**
+     * image watermark file not exist
+     * @var int
+     */
+    const IMAGE_WATERMARK_FILE_ERR = 702;
+    /**
+     * image destination dir access error
+     * @var int
+     */
+    const IMAGE_DES_DIR_ACCESS_ERR = 703;
+    /**
+     * image open failed
+     * @var int
+     */
+    const IMAGE_OPEN_FAILED = 704;
+    /**
+     * paginator default
+     * @var int
+     */
+    const PAGINATOR_DEFAULT = 800;
+    /**
+     * paginator page size
+     * @var int
+     */
+    const PAGINATOR_PAGESIZE = 801;
+    /**
      * Queue
      * @var int
      */
@@ -220,22 +255,22 @@ class ExceptionCode {
      * Queue Processor
      * @var int
      */
-    const QUEUEPROCESSOR_DEFAULT_ERROR = 1100;
+    const QUEUEPROCESSOR_DEFAULT_ERROR = 1004;
     /**
      * Queue
      * @var int
      */
-    const QUEUEPROCESSOR_CONFIG_ERROR = 1101;
+    const QUEUEPROCESSOR_CONFIG_ERROR = 1005;
     /**
      * Queue
      * @var int
      */
-    const QUEUEPROCESSOR_COMMUNICATOR_ERROR = 1102;
+    const QUEUEPROCESSOR_COMMUNICATOR_ERROR = 1006;
     /**
      * Queue
      * @var int
      */
-    const QUEUEPROCESSOR_QUEUE_ERROR = 1103;
+    const QUEUEPROCESSOR_QUEUE_ERROR = 1007;
     /**
      * info collector
      * @var int
@@ -261,6 +296,16 @@ class ExceptionCode {
      * @var int
      */
     const MODEL_DEFAULT_ERROR = 1400;
+    /**
+     * request
+     * @var int
+     */
+    const REQUEST_NOT_AJAX = 1500;
+    /**
+     * request
+     * @var int
+     */
+    const REQUEST_NOT_APP = 1501;
 
     // ----------------------------- APPLICATION LEVEL --------------------------------------------
     /**
@@ -358,5 +403,15 @@ class ExceptionCode {
      * @var int
      */
     const APP_MAINLOOP_REACHED_MAXLIMIT = 2018;
+    /**
+     * debug config file not exist
+     * @var int
+     */
+    const APP_DEBUG_CONFIG_FILE_NOT_EXIST = 2019;
+    /**
+     * application is in maintenance
+     * @var int
+     */
+    const APP_IN_MAINTENANCE = 2020;
 
 }

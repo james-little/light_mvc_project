@@ -1,4 +1,5 @@
 <?php
+
 use info\InfoCollector;
 
 // -----------------------  SYSTEM MESSAGES -----------------------------------//
@@ -10,8 +11,14 @@ use info\InfoCollector;
  */
 function __message($message, $param = null, $textdomain = null) {
 
-    if (defined('APPLICATION_LANG') && extension_loaded('gettext')) {
-        if($textdomain) {
+    if (empty($message)) {
+        return '';
+    }
+    if (!extension_loaded('gettext')) {
+        return $message;
+    }
+    if (defined('APPLICATION_LANG') && APPLICATION_LANG != Application::LANG_EN) {
+        if ($textdomain) {
             $message = dgettext($textdomain, $message);
         } else {
             $message = gettext($message);
@@ -31,8 +38,10 @@ function __message($message, $param = null, $textdomain = null) {
  */
 function __add_info(
     $message, $type = InfoCollector::TYPE_LOGIC, $level = InfoCollector::LEVEL_INFO) {
-    if (defined('ENABLE_INFO_COLLECT') && ENABLE_INFO_COLLECT === false) {
-        return ;
+    if ($type != InfoCollector::TYPE_EXCEPTION) {
+        if (defined('ENABLE_INFO_COLLECT') && ENABLE_INFO_COLLECT === false) {
+            return;
+        }
     }
     global $GLOBALS;
     if (empty($GLOBALS['information_collector'])) {
@@ -51,18 +60,17 @@ function __exception_message(Exception $e) {
 }
 
 // -----------------------  ARRAY -----------------------------------//
-
 /**
  * clear empty, null or duplicated value in array
  * @param array $array
  * @return array
  */
 function array_clear_empty($array) {
-    if(!is_array($array)) {
+    if (!is_array($array)) {
         return $array;
     }
-    foreach($array as $key => $val) {
-        if($val === null || $val == '') {
+    foreach ($array as $key => $val) {
+        if ($val === null || $val == '') {
             unset($array[$key]);
         }
     }
@@ -79,9 +87,9 @@ function in_array_pro($value, $array) {
         return false;
     }
     return
-        count($array) > 50 ?
-        array_key_exists($value, @array_flip($array)) :
-        in_array($value, $array);
+    count($array) > 50 ?
+    array_key_exists($value, @array_flip($array)) :
+    in_array($value, $array);
 }
 /**
  * filter array with specified keys
@@ -99,10 +107,17 @@ function in_array_pro($value, $array) {
  * @param array $data_map
  * @param array $column_array
  */
-function filter_array($data_map, $column_array, $not_empty = false) {
-    if(empty($data_map) || !is_array($column_array)) return array();
+function filter_array($data_map, $column_array = array(), $not_empty = false) {
+    if (empty($data_map) || !is_array($column_array)) {
+        return array();
+    }
+    if (empty($column_array)) {
+        return $data_map;
+    }
     $array = array_intersect_key($data_map, array_flip($column_array));
-    if ($not_empty === false) return $array;
+    if ($not_empty === false) {
+        return $array;
+    }
     return array_clear_empty($array);
 }
 /**
@@ -126,7 +141,9 @@ function filter_array($data_map, $column_array, $not_empty = false) {
  * @param array $column_list
  */
 function array_get_column($array_list, $column_list) {
-    if (empty($column_list)) return array();
+    if (empty($column_list)) {
+        return $array_list;
+    }
     $data_list = array();
     foreach ($column_list as $column) {
         foreach ($array_list as $key => $array) {
@@ -156,7 +173,7 @@ function array_get_column($array_list, $column_list) {
  * @return array
  */
 function array_get_column_value($array_list, $column, $enable_duplicate = false) {
-    if(empty($array_list)) {
+    if (empty($array_list)) {
         return array();
     }
     if (empty($column) || !is_string($column)) {
@@ -168,12 +185,47 @@ function array_get_column_value($array_list, $column, $enable_duplicate = false)
             $data_list[] = $array[$column];
         }
     }
-    if(!$enable_duplicate) {
+    if (!$enable_duplicate) {
         $data_list = array_unique($data_list);
     }
     return $data_list;
 }
-
+/**
+ * get specified data from array
+ * @example
+ *     given array:
+ *         $records = array(
+ *           array('id' => 2135, 'first_name' => 'John'),
+ *           array('id' => 2131, 'first_name' => 'Sally'),
+ *           array('id' => 2137, 'first_name' => 'Peter'),
+ *          );
+ *          $data_list = array_get_column_value($records, 'id');
+ *
+ *      result would be:
+ *          array(2135,2131,2137)
+ * @param array $array_list
+ * @param string $column
+ * @param boolean $enable_duplicate
+ * @return array
+ */
+function array_get_column_kvalue($array_list, $column, $enable_duplicate = false) {
+    if (empty($array_list)) {
+        return array();
+    }
+    if (empty($column) || !is_string($column)) {
+        return array();
+    }
+    $data_list = array();
+    foreach ($array_list as $key => $array) {
+        if (array_key_exists($column, $array)) {
+            $data_list[$key] = $array[$column];
+        }
+    }
+    if (!$enable_duplicate) {
+        $data_list = array_unique($data_list);
+    }
+    return $data_list;
+}
 /**
  * make multi-value string.
  *     example: 2,3,1,5 => 1,2,3,5
@@ -181,18 +233,64 @@ function array_get_column_value($array_list, $column, $enable_duplicate = false)
  * @return string
  */
 function make_multi_val_string($data) {
-    if (empty($data)) return '';
+    if (empty($data)) {
+        return '';
+    }
+
     if (is_string($data) || is_numeric($data)) {
         // is $data is string then make it into array
         $data = explode(',', $data);
     }
     $data = array_clear_empty($data);
-    if (empty($data)) return '';
+    if (empty($data)) {
+        return '';
+    }
+
     $data = array_unique($data);
     sort($data, SORT_NUMERIC);
     return implode(',', $data);
 }
-
+/**
+ * @example
+ *     given array:
+ *         $records = array(
+ *           array('id' => 2135, 'first_name' => 'John'),
+ *           array('id' => 2131, 'first_name' => 'Sally'),
+ *           array('id' => 2137, 'first_name' => 'Peter'),
+ *          );
+ *          $data_list = array_get_column_value($records, 'id');
+ *
+ *      result would be:
+ *          array(2135,2131,2137)
+ * @param array $array_list
+ * @param string $column
+ * @return array
+ */
+function order_by($array_list, $column) {
+    if (empty($array_list)) {
+        return [];
+    }
+    $is_sort_column_numeric = null;
+    $sort_list              = [];
+    foreach ($array_list as $key => $array) {
+        $sort_list[$array[$column]][] = $key;
+        if ($is_sort_column_numeric === null) {
+            $is_sort_column_numeric = is_numeric($array[$column]);
+        }
+    }
+    if ($is_sort_column_numeric) {
+        ksort($sort_list, SORT_NUMERIC);
+    } else {
+        ksort($sort_list, SORT_STRING);
+    }
+    $result_list = [];
+    foreach ($sort_list as $array) {
+        foreach ($array as $val) {
+            $result_list[] = $array_list[$val];
+        }
+    }
+    return $result_list;
+}
 // -----------------------  STRING -----------------------------------//
 /**
  * convert var to string
@@ -200,7 +298,7 @@ function make_multi_val_string($data) {
  * @return string
  */
 function convert_string($val) {
-    if(is_string($val)) {
+    if (is_string($val)) {
         return $val;
     }
     if (is_object($val) || is_array($val)) {
@@ -224,7 +322,6 @@ function _serialize($val) {
     }
     return $val;
 }
-
 /**
  * unserialize
  * @param $val
@@ -238,32 +335,123 @@ function _unserialize($val) {
     }
     return $val;
 }
-
-//-----------------------  ENCODING -----------------------------------//
 /**
- * convert string into utf-8 encoding
- * @param string $string
+ * merge string
+ * put str1 into even position and str2 into odd position char by char
+ * example:
+ *     $str1 = 'abcde';
+ *     $str2 = 'defghij';
+ *
+ *     $merged_str = 'adbecfdgehij';
+ *
+ * @param  string $str1
+ * @param  string $str2
  * @return string
  */
-function convert2utf8($string, $from_encode = null) {
-    if (empty($string)) return '';
-    if (!$from_encode) {
-        $from_encode = mb_detect_encoding($string, "auto", true);
+function merge_string($str1, $str2) {
+    if (empty($str1) && empty($str2)) {
+        return '';
     }
-    if (!$from_encode) {
-        // return original string when auto detect encoding failed
-        return $string;
+    if (empty($str1)) {
+        return $str2;
     }
-    $from_encode = strtolower($from_encode);
-    if ($from_encode == 'utf-8' || $from_encode == 'utf8') {
-        return $string;
+    if (empty($str2)) {
+        return $str1;
     }
-    if (extension_loaded('iconv')) {
-        return iconv($from_encode, 'UTF-8//IGNORE', $string);
+    $len1       = strlen($str1);
+    $len2       = strlen($str2);
+    $max        = $len1 >= $len2 ? $len2 * 2 : $len1 * 2;
+    $merged_str = '';
+    for ($i = 0; $i < $max; $i++) {
+        if ($i % 2 == 0) {
+            $merged_str .= $str1[intval($i / 2)];
+        } else {
+            $merged_str .= $str2[intval($i / 2)];
+        }
     }
-    return mb_convert_encoding($string, 'UTF-8', $from_encode);
-
+    if ($len1 >= $len2) {
+        $merged_str .= substr($str1, $len2);
+    } else {
+        $merged_str .= substr($str2, $len1);
+    }
+    return $merged_str;
 }
+/**
+ * split merged string back to str1 and str2
+ * @param  string $str
+ * @param  int $len1
+ * @return array
+ */
+function split_string($str, $len1) {
+    $str_array = [0 => '', 1 => ''];
+    if (empty($str)) {
+        return $str_array;
+    }
+    if (!$len1) {
+        $str_array[1] = $str;
+        return $str_array;
+    }
+    $len2 = strlen($str) - $len1;
+    $max  = $len1 >= $len2 ? $len2 * 2 : $len1 * 2;
+    for ($i = 0; $i < $max; $i++) {
+        if ($i % 2 == 0) {
+            $str_array[0] .= $str[$i];
+        } else {
+            $str_array[1] .= $str[$i];
+        }
+    }
+    if ($len1 >= $len2) {
+        $str_array[0] .= substr($str, $max);
+    } else {
+        $str_array[1] .= substr($str, $max);
+    }
+    return $str_array;
+}
+/**
+ * check date
+ * @param string $date
+ * @return bool
+ */
+function validate_date($date_str) {
+    return strtotime($date_str) === false ? false : true;
+}
+/**
+ * check is chinese
+ * @param  string  $str
+ * @return bool
+ */
+function is_chinese_str($str) {
+    if (empty($str)) {
+        return false;
+    }
+    if (preg_match("/[\x{4e00}-\x{9fa5}]+/u", $str)) {
+        return true;
+    }
+    return false;
+}
+/**
+ * check is japanese
+ * @param  string  $str
+ * @return bool
+ */
+function is_japanese_str($str) {
+    if (empty($str)) {
+        return false;
+    }
+    if (preg_match("/[ぁ-んー]+/u", $str)) {
+        // ひらがな
+        return true;
+    } elseif (preg_match("/[ァ-ヶー]+/u", $str)) {
+        // カタカナ
+        return true;
+    } elseif (preg_match("/[一-龠]+/u", $str)) {
+        // 漢字
+        return true;
+    }
+    return false;
+}
+
+//-----------------------  ENCODING -----------------------------------//
 
 /**
  * parse csv file to array
@@ -301,32 +489,32 @@ function make_file($base_dir, $type = 'monthly', $is_make_file = true) {
     if (!in_array($type, array('daily', 'monthly', 'hourly', 'weekly'))) {
         return false;
     }
-    $file_name = '';
+    $file_name  = '';
     $sub_folder = '';
     switch ($type) {
-        case 'monthly':
-            $sub_folder = $base_dir;
-            $file_name = date('Ym') . '.log';
-            break;
-        case 'weekly':
-            $sub_folder = "{$base_dir}/" . date('Ym');
-            $file_name = date('YW') . '.log';
-            break;
-        case 'daily':
-            $sub_folder = "{$base_dir}/" . date('Ym');
-            $file_name = date('Ymd') . '.log';
-            break;
-        case 'hourly':
-            $sub_folder = "{$base_dir}/" . date('Ym');
-            $file_name = date('YmdH') . '.log';
-            break;
+    case 'monthly':
+        $sub_folder = $base_dir;
+        $file_name  = date('Ym') . '.log';
+        break;
+    case 'weekly':
+        $sub_folder = "{$base_dir}/" . date('Ym');
+        $file_name  = date('YW') . '.log';
+        break;
+    case 'daily':
+        $sub_folder = "{$base_dir}/" . date('Ym');
+        $file_name  = date('Ymd') . '.log';
+        break;
+    case 'hourly':
+        $sub_folder = "{$base_dir}/" . date('Ym');
+        $file_name  = date('YmdH') . '.log';
+        break;
     }
     if (!is_dir($sub_folder)) {
         @mkdir($sub_folder, 0777, true);
         @chmod($sub_folder, 0777);
     }
     $full_path = $sub_folder . '/' . $file_name;
-    if(!$is_make_file) {
+    if (!$is_make_file) {
         return $full_path;
     }
     @file_put_contents($full_path, '', FILE_APPEND);
@@ -335,20 +523,29 @@ function make_file($base_dir, $type = 'monthly', $is_make_file = true) {
     }
     return $full_path;
 }
+
 /**
- * check is directory usable
- * @param string $dir
- * @param string $chmod
- * @return boolean
+ * mkdir recursive
+ * @param  string  $path
+ * @param  int     $mode
+ * @return bool
  */
-function directory_make_usable($dir, $chmod = 0777) {
-    // If it doesn't exist, and can't be made
-    if(!is_dir($dir) && !mkdir($dir, $chmod, true)) return false;
-    // If it isn't writable, and can't be made writable
-    if(!is_writable($dir) && !chmod($dir, $chmod)) return false;
+function mkdir_r($path, $mode = 0755) {
+
+    $dirs = explode(DIRECTORY_SEPARATOR, $path);
+    $dir  = '';
+    foreach ($dirs as $part) {
+        $dir .= $part . DIRECTORY_SEPARATOR;
+        if (is_dir($dir) === false && strlen($dir) > 0) {
+            if (@mkdir($dir, $mode) === false) {
+                return false;
+            } else {
+                chmod($dir, $mode);
+            }
+        }
+    }
     return true;
 }
-
 /**
  * delete folder and files below
  * @param  string  $dir
@@ -356,17 +553,17 @@ function directory_make_usable($dir, $chmod = 0777) {
  * @return void
  */
 function del_dir_files($dir) {
-    if(!is_dir($dir)) {
-        return ;
+    if (!is_dir($dir)) {
+        return;
     }
     $dh = opendir($dir);
     while ($file = readdir($dh)) {
-        if($file == '.' || $file == '..') {
-            continue ;
+        if ($file == '.' || $file == '..') {
+            continue;
         }
         $fullpath = $dir . '/' . $file;
-        if(is_dir($fullpath)) {
-            continue ;
+        if (is_dir($fullpath)) {
+            continue;
         }
         unlink($fullpath);
     }
@@ -379,28 +576,93 @@ function del_dir_files($dir) {
  * @param  boolean $is_delete_self
  * @return void
  */
-function del_dir_recur($dir, $is_delete_self = false) {
-    if(!is_dir($dir)) {
-        return ;
+function del_dir_r($dir, $is_delete_self = false) {
+    if (!is_dir($dir)) {
+        return;
     }
     $dh = opendir($dir);
     while ($file = readdir($dh)) {
-        if($file == '.' || $file == '..') {
-            continue ;
+        if ($file == '.' || $file == '..') {
+            continue;
         }
         $fullpath = $dir . '/' . $file;
         if (is_dir($fullpath)) {
-            del_dir_recur($fullpath, true);
+            del_dir_r($fullpath, true);
         } else {
             unlink($fullpath);
         }
     }
     closedir($dh);
-    if($is_delete_self) {
+    if ($is_delete_self) {
         rmdir($dir);
     }
 }
-
+/**
+ * path info for multiple-byte string
+ * @param  string $path
+ * @param  int $options
+ * @return array
+ */
+function mb_pathinfo($path, $options = null) {
+    $path  = urlencode($path);
+    $parts = null === $options ? pathinfo($path) : pathinfo($path, $options);
+    foreach ($parts as $field => $value) {
+        $parts[$field] = urldecode($value);
+    }
+    return $parts;
+}
+/**
+ * chmod recursively
+ * @param  string $path
+ * @param  int $mode
+ * @return
+ */
+function chmod_r($path, $mode = 0755) {
+    $dir = new DirectoryIterator($path);
+    foreach ($dir as $item) {
+        if ($item->isDot()) {
+            continue;
+        }
+        if ($item->isDir()) {
+            chmod_r($item->getPathname(), $mode);
+        }
+        @chmod($item->getPathname(), $mode);
+    }
+}
+/**
+ * change owner recursively
+ * @param  string $path
+ * @param  int $owner
+ */
+function chown_r($path, $owner) {
+    $dir = new DirectoryIterator($path);
+    foreach ($dir as $item) {
+        if ($item->isDot()) {
+            continue;
+        }
+        if ($item->isDir()) {
+            chown_r($item->getPathname(), $owner);
+        }
+        @chown($item->getPathname(), $owner);
+    }
+}
+/**
+ * change group recursively
+ * @param  string $path
+ * @param  int $group
+ */
+function chgrp_r($path, $group) {
+    $dir = new DirectoryIterator($path);
+    foreach ($dir as $item) {
+        if ($item->isDot()) {
+            continue;
+        }
+        if ($item->isDir()) {
+            chgrp_r($item->getPathname(), $group);
+        }
+        @chgrp($item->getPathname(), $group);
+    }
+}
 //-----------------------  CRYPT -----------------------------------//
 
 /**
@@ -411,24 +673,29 @@ function del_dir_recur($dir, $is_delete_self = false) {
  * @return mixed null if decode failed
  */
 function decode_crypt_value($crypt_value, $crypt_key, $base64_encode = false) {
-    if (!function_exists('mcrypt_module_open')) return null;
-    if (!function_exists('mcrypt_generic_init')) return null;
-    if($base64_encode) {
+    if (!function_exists('mcrypt_module_open')) {
+        return null;
+    }
+
+    if (!function_exists('mcrypt_generic_init')) {
+        return null;
+    }
+    if ($base64_encode) {
         $crypt_value = base64_decode($crypt_value);
     } else {
         if (phpversion() < '5.4.0') {
             $crypt_value = hex2bin5_3($crypt_value);
         } else {
-            if(strlen($crypt_value) % 2 > 0) {
+            if (strlen($crypt_value) % 2 > 0) {
                 return null;
             }
             $crypt_value = hex2bin($crypt_value);
         }
     }
-    if(!$crypt_value) {
+    if (!$crypt_value) {
         return null;
     }
-    if(!$crypt_key) {
+    if (!$crypt_key) {
         return null;
     }
     $iv = strrev($crypt_key);
@@ -450,13 +717,19 @@ function decode_crypt_value($crypt_value, $crypt_key, $base64_encode = false) {
  * @return string encoded data
  */
 function get_crypt_value($string, $crypt_key, $base64_encode = false) {
-    if (!function_exists('mcrypt_module_open')) return null;
-    if (!function_exists('mcrypt_generic_init')) return null;
-    if(!$crypt_key) {
+    if (!function_exists('mcrypt_module_open')) {
+        return null;
+    }
+
+    if (!function_exists('mcrypt_generic_init')) {
+        return null;
+    }
+
+    if (!$crypt_key) {
         return null;
     }
     $blocksize = 16;
-    $pad = $blocksize - (strlen($string) % $blocksize);
+    $pad       = $blocksize - (strlen($string) % $blocksize);
     $string .= str_repeat(chr($pad), $pad);
     $iv = strrev($crypt_key);
     $td = mcrypt_module_open('rijndael-128', '', 'cbc', $iv);
@@ -464,24 +737,64 @@ function get_crypt_value($string, $crypt_key, $base64_encode = false) {
     $string = mcrypt_generic($td, $string);
     mcrypt_generic_deinit($td);
     mcrypt_module_close($td);
-    if($base64_encode) {
+    if ($base64_encode) {
         return base64_encode($string);
     }
     return bin2hex($string);
 }
+/**
+ * decode encoded data
+ * @param string $encrypt_value
+ * @param string $crypt_key
+ * @param string $iv
+ * @return mixed null if decode failed
+ */
+function decode_mcrypt_value($encrypt_value, $crypt_key, $iv) {
+    if (!function_exists('mcrypt_decrypt')) {
+        return null;
+    }
+    if (!$encrypt_value) {
+        return null;
+    }
+    if (!$crypt_key || !$iv) {
+        return null;
+    }
+    $encrypt_value = base64_decode($encrypt_value);
+    $decrypted     = rtrim(mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $crypt_key, $encrypt_value, MCRYPT_MODE_CBC, $iv), "\r\n\0 ");
+    $decrypted     = preg_replace('/[\x00-\x1F]/', '', $decrypted);
+    return $decrypted;
+}
+
+/**
+ * make encode string
+ * @param string $string
+ * @param string $crypt_key
+ * @param boolean $iv
+ * @return string encoded data
+ */
+function get_mcrypt_value($string, $crypt_key, $iv) {
+    if (!function_exists('mcrypt_decrypt')) {
+        return null;
+    }
+    if (!$crypt_key || !$iv) {
+        return null;
+    }
+    $encrypted = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $crypt_key, $string, MCRYPT_MODE_CBC, $iv);
+    return base64_encode($encrypted);
+}
+
 /**
  * hex -> binary
  * @param string $hexdata
  */
 function hex2bin5_3($hexdata) {
     $bindata = '';
-    $len = strlen($hexdata);
+    $len     = strlen($hexdata);
     for ($i = 0; $i < $len; $i += 2) {
         $bindata .= chr(hexdec(substr($hexdata, $i, 2)));
     }
     return $bindata;
 }
-
 
 //-----------------------  RANDOM -----------------------------------//
 /**
@@ -491,7 +804,7 @@ function hex2bin5_3($hexdata) {
  * @return string
  */
 function get_random_string($length, $with_symbol = false) {
-    $str = '';
+    $str   = '';
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     if ($with_symbol) {
         $chars .= '#$%&();:/\!,.<>+{}[]';
@@ -536,10 +849,13 @@ function format_2_UTC($date) {
  * @param int $buffer_size
  */
 function echo_pro($string, $buffer_size = 8192) {
+    if (empty($string)) {
+        return '';
+    }
     $len = strlen($string);
-    if($len <= $buffer_size) {
+    if ($len <= $buffer_size) {
         echo $string;
-        return ;
+        return;
     }
     for ($chars = $len - 1, $start = 0; $start <= $chars; $start += $buffer_size) {
         echo substr($string, $start, $buffer_size);

@@ -16,22 +16,18 @@
  **/
 namespace core;
 
-use info\InfoCollector,
-    exception\DbException,
-    exception\CacheException,
-    exception\AppException,
-    exception\ExceptionCode,
-    exception\ViewException,
-    ErrorCode,
-    \ClassLoader,
-    \Application,
-    \Exception;
+use Application;
+use ClassLoader;
+use Exception;
+use exception\AppException;
+use exception\ExceptionCode;
+use info\InfoCollector;
 
 class Dispatcher {
 
-    protected $_default_module = 'appDefault';
+    protected $_default_module     = 'appDefault';
     protected $_default_controller = 'Index';
-    protected $_default_action = 'index';
+    protected $_default_action     = 'index';
 
     /**
      * set default module
@@ -79,6 +75,7 @@ class Dispatcher {
     /**
      * dispatch
      * @param string $path
+     * @return string: reponse string
      * @throws AppException
      */
     public function dispatch($path) {
@@ -107,18 +104,18 @@ class Dispatcher {
         // message
         __add_info(sprintf('path parsed. module: %s,controller: %s,action: %s', $module, $controller, $action),
             InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
-        $controller = ucfirst($controller);
+        $controller                 = ucfirst($controller);
         $GLOBAL['controller_class'] = "\\{$module}\\controller\\{$controller}Controller";
-        $GLOBAL['action_method'] = $action;
+        $GLOBAL['action_method']    = $action;
         // add locale domain
-        if (substr(APPLICATION_LANG, 0 ,2) != 'en') {
+        if (APPLICATION_LANG != Application::LANG_EN) {
             $module_locale_dir = APPLICATION_DIR . 'protected' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . $module . DIRECTORY_SEPARATOR . 'locale';
             if (!is_dir($module_locale_dir)) {
                 throw new AppException(
                     sprintf('locale dir not exist: %s', $module_locale_dir),
                     ExceptionCode::APP_LOCALE_DIR_NOT_EXIST);
             }
-            Application::setLocale(APPLICATION_LANG, $module_locale_dir, $module);
+            Application::setLocaleDomain(APPLICATION_LANG, $module_locale_dir, $module);
         }
         $max_loop = 20;
         // start dispatch
@@ -127,8 +124,8 @@ class Dispatcher {
         ob_start();
         while (!empty($GLOBAL['controller_class']) && $max_loop > 0) {
             $controller_class = $GLOBAL['controller_class'];
-            $action_method = empty($GLOBAL['action_method']) ? $this->_default_action : $GLOBAL['action_method'];
-            __add_info('controller:'.$controller_class.',action:'.$action_method, InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+            $action_method    = empty($GLOBAL['action_method']) ? $this->_default_action : $GLOBAL['action_method'];
+            __add_info('controller:' . $controller_class . ',action:' . $action_method, InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
             if (!class_exists($controller_class)) {
                 throw new AppException(
                     sprintf('controller not found: %s', $controller_class),
@@ -155,8 +152,8 @@ class Dispatcher {
                 if ($GLOBAL['is_controller_render_controller']) {
                     // clean buffer is controller rendered
                     ob_clean();
-                    $max_loop --;
-                    continue ;
+                    $max_loop--;
+                    continue;
                 }
                 $controller->$action_method();
                 // action
@@ -165,8 +162,8 @@ class Dispatcher {
                 if ($GLOBAL['is_controller_render_controller']) {
                     // clean buffer is controller rendered
                     ob_clean();
-                    $max_loop --;
-                    continue ;
+                    $max_loop--;
+                    continue;
                 }
                 $controller->preRender();
                 // preRender
@@ -174,9 +171,10 @@ class Dispatcher {
                 // check render from controller
                 if ($GLOBAL['is_controller_render_controller']) {
                     ob_clean();
-                    $max_loop --;
-                    continue ;
+                    $max_loop--;
+                    continue;
                 }
+                $module = substr($controller_class, 1, strpos($controller_class, '\\', 1) - 1);
                 $controller->render($module, $controller_class, $action_method);
                 // render
                 __add_info('render executed', InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
@@ -197,19 +195,19 @@ class Dispatcher {
                 } else {
                     $controller->renderError($e);
                 }
-                $max_loop --;
-                continue ;
+                $max_loop--;
+                continue;
             }
             // if nothing exception happened, clear dispatch info and finish loop
             $this->clearDispatcherInfo();
         }
-        if(!$max_loop) {
+        if (!$max_loop) {
             throw new AppException('main loop has reached its max limit',
-                    ExceptionCode::APP_MAINLOOP_REACHED_MAXLIMIT);
+                ExceptionCode::APP_MAINLOOP_REACHED_MAXLIMIT);
         }
         $response = ob_get_contents();
         ob_end_clean();
-        echo_pro($response);
+        return $response;
     }
     /**
      * clear dispatch information

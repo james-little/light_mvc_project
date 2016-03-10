@@ -1,7 +1,7 @@
 <?php
 namespace core;
 
-use \Application,
+use Application,
     exception\ModelException,
     resource\db\Db,
     exception\DbException,
@@ -54,11 +54,12 @@ class Model {
             $db_config = APPLICATION_CONFIG_DIR . APPLICATION_ENVI . DS . 'database.php';
             if (!is_file($db_config)) {
                 throw new ModelException(
-                    sprintf('config file not exist: %s', $db_config),
+                    sprintf('db config file not exist: %s', $db_config),
                     ExceptionCode::DB_CONFIG_NOT_EXIST);
             }
             $db_config = include($db_config);
             $db_config = $this->overWriteDbConfigForDebugDevice($db_config);
+            $db_config = $this->overWriteDbConfigForPHPUnit($db_config);
             Application::setConfig('database', $db_config);
         }
         return $db_config;
@@ -68,7 +69,7 @@ class Model {
      * chage database to %dbname%_debug
      */
     private function overWriteDbConfigForDebugDevice($db_config) {
-        if (defined('APPLICATION_IS_DEBUG_DEVICE') && APPLICATION_IS_DEBUG_DEVICE) {
+        if (defined('APPLICATION_IS_SANDBOX') && APPLICATION_IS_SANDBOX) {
             foreach ($db_config['hosts'] as $host_alias => $host_config) {
                 // master
                 $db_config['hosts'][$host_alias]['servers']['m']['dbname'] .= '_sandbox';
@@ -78,6 +79,26 @@ class Model {
                 // slave
                 foreach ($host_config['servers']['s'] as $key => $slave_config) {
                     $db_config['hosts'][$host_alias]['servers']['s'][$key]['dbname'] .= '_sandbox';
+                }
+            }
+        }
+        return $db_config;
+    }
+    /**
+     * over write db config for phpunit
+     * chage database to %dbname%_debug
+     */
+    private function overWriteDbConfigForPHPUnit($db_config) {
+        if (defined('IS_PHPUNIT') && IS_PHPUNIT) {
+            foreach ($db_config['hosts'] as $host_alias => $host_config) {
+                // master
+                $db_config['hosts'][$host_alias]['servers']['m']['dbname'] .= '_test';
+                if (!$db_config['hosts'][$host_alias]['replication']) {
+                    continue ;
+                }
+                // slave
+                foreach ($host_config['servers']['s'] as $key => $slave_config) {
+                    $db_config['hosts'][$host_alias]['servers']['s'][$key]['dbname'] .= '_test';
                 }
             }
         }
@@ -184,7 +205,7 @@ class Model {
         if (empty($column_list)) {
             $sql .= '*';
         } else {
-            $sql .= implode(',', $column_list);
+            $sql .= '`' . implode('`,`', $column_list) . '`';
         }
         $sql .= " FROM `{$table}` ";
         if ($where) $sql .= ' WHERE ' . $where;
@@ -210,7 +231,7 @@ class Model {
         if (empty($column_list)) {
             $sql .= '*';
         } else {
-            $sql .= implode(',', $column_list);
+            $sql .= '`' . implode('`,`', $column_list) . '`';
         }
         $sql .= " FROM `{$table}` ";
         if ($where) $sql .= ' WHERE ' . $where;
@@ -493,7 +514,7 @@ class Model {
         if (empty($column_list)) {
             $sql .= '*';
         }else{
-            $sql .= implode(',', $column_list);
+            $sql .= '`' . implode('`,`', $column_list) . '`';
         }
         $sql .= " FROM `{$table}` WHERE 1 ";
         $params = array();

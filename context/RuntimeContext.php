@@ -1,10 +1,10 @@
 <?php
 namespace context;
 
+use context\Context;
+use exception\AppException;
 use exception\ExceptionCode;
 
-use context\Context,
-    exception\AppException;
 /**
  * Runtime Context
  * =======================================================
@@ -13,16 +13,14 @@ use context\Context,
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-abstract class RuntimeContext extends Context {
+class RuntimeContext extends Context {
 
-    protected static $_instance;
-
-    const ENVI_PRODCTION = 'production';
-    const ENVI_DEVELOP = 'develop';
-    const ENVI_STAGING = 'staging';
+    const ENVI_PRODUCTION = 'production';
+    const ENVI_DEVELOP    = 'develop';
+    const ENVI_STAGING    = 'staging';
 
     const MODE_NORMAL = 'n';
-    const MODE_CLI = 'c';
+    const MODE_CLI    = 'c';
 
     // application run environment
     protected static $APP_ENVI;
@@ -34,19 +32,9 @@ abstract class RuntimeContext extends Context {
     /**
      * constructor
      */
-    protected function __construct(){
+    protected function __construct() {
+        parent::__construct();
         $this->getAppRunmode();
-    }
-    /**
-     * singleton
-     * @return RuntimeContext
-     */
-    public static function getInstance(){
-        if(static::$_instance !== null){
-            return static::$_instance;
-        }
-        static::$_instance = new static();
-        return static::$_instance;
     }
     /**
      * get application runtime enviornment
@@ -56,13 +44,13 @@ abstract class RuntimeContext extends Context {
     public function getAppEnvi($cli_manual_envi = null) {
 
         if ($cli_manual_envi &&
-            in_array($cli_manual_envi, array('production', 'staging', 'develop')) &&
+            in_array($cli_manual_envi, ['production', 'staging', 'develop']) &&
             $this->getAppRunmode() == self::MODE_CLI) {
             $this->setAppEnvi($cli_manual_envi);
         } else {
             $this->setAppEnvi();
         }
-        if (!self::$APP_ENVI || !in_array(self::$APP_ENVI, array('production', 'staging', 'develop'))) {
+        if (!self::$APP_ENVI || !in_array(self::$APP_ENVI, ['production', 'staging', 'develop'])) {
             throw new AppException('set application environment failed', ExceptionCode::APP_ENVI_NOT_DEFINED);
         }
         defined('APPLICATION_ENVI') ? null : define('APPLICATION_ENVI', self::$APP_ENVI);
@@ -86,5 +74,5 @@ abstract class RuntimeContext extends Context {
     /**
      * set application environment
      */
-    abstract protected function setAppEnvi($envi_manual = null);
+    protected function setAppEnvi($envi_manual = null) {}
 }

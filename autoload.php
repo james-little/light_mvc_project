@@ -20,7 +20,7 @@ if (FRAMEWORK_SPL_AUTOLOAD && set_include_path(get_include_path() . PATH_SEPARAT
 } else {
     require FRAMEWORK_ROOT_DIR . DIRECTORY_SEPARATOR . 'ClassLoader.php';
     $autoloader = new ClassLoader();
-    $autoloader->setUseIncludePath(true);
-    $autoloader->addScanPath(APPLICATION_DIR . 'protected' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR);
-    $autoloader->addScanPath(FRAMEWORK_ROOT_DIR);
+    ClassLoader::setUseIncludePath(true);
+    ClassLoader::addScanPath(APPLICATION_DIR . 'protected' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR);
+    ClassLoader::addScanPath(FRAMEWORK_ROOT_DIR);
 }

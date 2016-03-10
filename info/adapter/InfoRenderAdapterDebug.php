@@ -2,10 +2,9 @@
 
 namespace info\adapter;
 
-use context\RuntimeContext,
-    exception\InfoCollectorException,
-    \Debugger,
-    \BatchDebugger,
+use context\RuntimeContext;
+use Debugger,
+    BatchDebugger,
     info\adapter\AbstractInfoRenderAdapter,
     info\InfoCollector;
 

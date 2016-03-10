@@ -33,6 +33,7 @@ class BatchDebugger extends Debugger {
         if (substr($file_name, 0, 1) != '/') {
             $file_name = $this->getTmpFileName();
         }
+        $new_file_name = '';
         if (defined('SCRIPT_NAME') && SCRIPT_NAME) {
             $pos = strrpos($file_name, '/');
             $new_file_name = substr($file_name, 0, $pos) . '/' . SCRIPT_NAME . '_' . substr($file_name, $pos + 1);

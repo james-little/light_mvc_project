@@ -2,9 +2,6 @@
 
 namespace info;
 
-use exception\ExceptionCode,
-    exception\InfoCollectorException;
-
 /**
  * information collector
  * =======================================================
@@ -17,23 +14,23 @@ use exception\ExceptionCode,
  **/
 class InfoCollector {
 
-    const LEVEL_EMERG   = 0;  // Emergency: system is unusable
-    const LEVEL_ALERT   = 1;  // Alert: action must be taken immediately
-    const LEVEL_CRIT    = 2;  // Critical: critical conditions
-    const LEVEL_ERR     = 3;  // Error: error conditions
-    const LEVEL_WARN    = 4;  // Warning: warning conditions
-    const LEVEL_NOTICE  = 5;  // Notice: normal but significant condition
-    const LEVEL_INFO    = 6;  // Informational: informational messages
-    const LEVEL_DEBUG   = 7;  // Debug: debug messages
+    const LEVEL_EMERG  = 0; // Emergency: system is unusable
+    const LEVEL_ALERT  = 1; // Alert: action must be taken immediately
+    const LEVEL_CRIT   = 2; // Critical: critical conditions
+    const LEVEL_ERR    = 3; // Error: error conditions
+    const LEVEL_WARN   = 4; // Warning: warning conditions
+    const LEVEL_NOTICE = 5; // Notice: normal but significant condition
+    const LEVEL_INFO   = 6; // Informational: informational messages
+    const LEVEL_DEBUG  = 7; // Debug: debug messages
 
-    const TYPE_LOGIC = 1;
+    const TYPE_LOGIC     = 1;
     const TYPE_EXCEPTION = 2;
 
-    const EVENT_ON_EMERG_MESSAGE = 'eme';
-    const EVENT_ON_ERROR_MESSAGE = 'err';
-    const EVENT_ON_WARNING_MESSAGE = 'warn';
+    const EVENT_ON_EMERG_MESSAGE    = 'eme';
+    const EVENT_ON_ERROR_MESSAGE    = 'err';
+    const EVENT_ON_WARNING_MESSAGE  = 'warn';
     const EVENT_ON_CRITICAL_MESSAGE = 'critl';
-    const EVENT_ON_ALERT_MESSAGE = 'alrt';
+    const EVENT_ON_ALERT_MESSAGE    = 'alrt';
 
     protected static $_instance;
     private $messages;
@@ -52,7 +49,7 @@ class InfoCollector {
      * __construct
      */
     protected function __construct() {
-        $this->messages = array();
+        $this->messages = [];
     }
     /**
      * add event handler to information collector
@@ -62,24 +59,24 @@ class InfoCollector {
      */
     public function addEventHandler($type, $event_handler) {
 
-        if (!in_array($type, array(
+        if (!in_array($type, [
             self::EVENT_ON_EMERG_MESSAGE,
             self::EVENT_ON_ERROR_MESSAGE,
             self::EVENT_ON_WARNING_MESSAGE,
             self::EVENT_ON_CRITICAL_MESSAGE,
-            self::EVENT_ON_ALERT_MESSAGE
-        ))) {
+            self::EVENT_ON_ALERT_MESSAGE,
+        ])) {
             $this->add('add event handler error: not supported. type: ' . $type,
-                    self::TYPE_LOGIC, self::LEVEL_DEBUG);
+                self::TYPE_LOGIC, self::LEVEL_DEBUG);
             return false;
         }
         if (is_array($event_handler)) {
             if (!is_object($event_handler[0])) {
                 $this->add('add event handler error: parameter 1 must be object',
-                        self::TYPE_LOGIC, self::LEVEL_DEBUG);
+                    self::TYPE_LOGIC, self::LEVEL_DEBUG);
                 return false;
             }
-            if (!is_callable(array($event_handler[0], $event_handler[1]))) {
+            if (!is_callable([$event_handler[0], $event_handler[1]])) {
                 $this->add(
                     sprintf(
                         'add event handler error: event handler not callable. handler: %s : %s ',
@@ -103,7 +100,7 @@ class InfoCollector {
      * remove event handler from event handler map
      * @param string $type
      */
-    public function  removeEventHandler($type) {
+    public function removeEventHandler($type) {
         if (isset($this->event_handler_map[$type])) {
             unset($this->event_handler_map[$type]);
         }
@@ -114,7 +111,7 @@ class InfoCollector {
      */
     protected function execEvent($type, $message) {
         if (!isset($this->event_handler_map[$type])) {
-            return ;
+            return;
         }
         $event_handler = $this->event_handler_map[$type];
         if (is_string($event_handler)) {
@@ -131,7 +128,7 @@ class InfoCollector {
     public function getMessages($type = null) {
         if ($type) {
             if (!isset($this->messages[$type])) {
-                return array();
+                return [];
             }
             return $this->messages[$type];
         }
@@ -143,8 +140,8 @@ class InfoCollector {
      * @param int $type
      * @param int $level
      */
-    public function add($message, $type = self::TYPE_LOGIC,  $level = self::LEVEL_INFO) {
-        $this->messages[$type][] = array('level' => $level, 'message' => $message, 'timestamp' => time());
+    public function add($message, $type = self::TYPE_LOGIC, $level = self::LEVEL_INFO) {
+        $this->messages[$type][] = ['level' => $level, 'message' => $message, 'timestamp' => time()];
         $this->execEvent($level, $message);
     }
     /**

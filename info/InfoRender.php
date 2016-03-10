@@ -1,5 +1,4 @@
 <?php
-
 namespace info;
 
 use info\InfoCollector,
@@ -36,7 +35,7 @@ class InfoRender {
      * @return bool
      */
     public function hasAdapter(AbstractInfoRenderAdapter $adapter) {
-    	return isset($this->render_adapter_list[$this->getAdapterKey($adapter)]);
+        return isset($this->render_adapter_list[$this->getAdapterKey($adapter)]);
     }
     /**
      * get adapter key
@@ -44,16 +43,16 @@ class InfoRender {
      * @return string
      */
     private function getAdapterKey(AbstractInfoRenderAdapter $adapter) {
-    	return get_class($adapter);
+        return get_class($adapter);
     }
     /**
      * render
      */
     public function render() {
-		
-    	if (empty($this->info_collector)) {
-    		return ;
-    	}
+
+        if (empty($this->info_collector)) {
+            return ;
+        }
         if (empty($this->render_adapter_list)) {
             return ;
         }

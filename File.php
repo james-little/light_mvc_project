@@ -19,12 +19,15 @@ class File {
      *
      * @return array
      */
-    public function scanDirectory($dir, $filter_file = array(), $call_back = null) {
+    public function scanDirectory($dir, $filter_file = [], $call_back = null, $max_depth = null) {
         if (empty($dir) || !is_readable($dir)) {
-            return array();
+            return [];
         }
-        $file_list = array();
+        $file_list = [];
         $objects = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(realpath($dir)));
+        if(is_int($max_depth) && $max_depth > 0) {
+            $objects->setMaxDepth($max_depth);
+        }
         $pattern = '';
         if(!empty($filter_file)) {
             $pattern = implode('|', $filter_file);
@@ -70,12 +73,12 @@ class File {
      */
     static public function makeFile($base_dir, $type = self::MKFILE_TYPE_MONTHLY, $is_with_envi = false) {
 
-        if (!in_array($type, array(
+        if (!in_array($type, [
             self::MKFILE_TYPE_DAILY,
             self::MKFILE_TYPE_MONTHLY,
             self::MKFILE_TYPE_HOURLY,
             self::MKFILE_TYPE_WEEKLY
-        ))) {
+        ])) {
             return false;
         }
         if ($is_with_envi && defined('APPLICATION_ENVI')) {
@@ -123,9 +126,9 @@ class File {
 
         $handle = @fopen($file_name, 'r');
         if ($handle === false) {
-            return array();
+            return [];
         }
-        $data = array();
+        $data = [];
         while (($row = @fgetcsv($handle, 1000, $delimiter)) !== false) {
             $data[] = $row;
         }
@@ -141,20 +144,43 @@ class File {
     static public function yamlToArray($file_name, $key = null) {
 
         if (empty($file_name)) {
-            return array();
+            return [];
         }
         $result = null;
         if (Url::validateUrl($file_name) !== false) {
             $result = yaml_parse_url($file_name);
         } else {
             if (!is_file($file_name)) {
-                return array();
+                return [];
             }
             $result = yaml_parse_file($file_name);
         }
         if ($key === null) {
             return $result;
         }
-        return array_key_exists($key, $result) ? $result[$key] : array();
+        return array_key_exists($key, $result) ? $result[$key] : [];
+    }
+    /**
+     * get File info
+     * @param  string $file
+     * @return array
+     */
+    public static function getFileInfo($file) {
+        $info_array = [
+            'filename' => '',
+            'dirname' => '',
+            'extension' => '',
+            'basename' => '',
+        ];
+        if(empty($file)) {
+            return $info_array;
+        }
+        $info = array_merge(['extension' => ''], pathinfo($file));
+        $info_array['extension'] = $info['extension'];
+        $info_array['filename'] = $info['filename'];
+        $info_array['dirname'] = $info['dirname'];
+        $info_array['basename'] = $info['basename'];
+        return $info_array;
+
     }
 }

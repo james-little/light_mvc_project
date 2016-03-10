@@ -1,10 +1,9 @@
 <?php
 namespace core;
 
-use \Application,
-    \Redis,
+use Application,
+    Redis,
     resource\ResourcePool,
-    info\InfoCollector,
     exception\ExceptionCode,
     exception\RedisException;
 
@@ -19,11 +18,16 @@ class RedisModel {
 
     protected $redis;
     protected $table;
+    private $dbname;
+    private $auth;
 
     /**
      * __construct
      */
     public function __construct() {
+        if (!extension_loaded('redis')) {
+            throw new RedisException('redis extendtion not loaded', ExceptionCode::REDIS_DEFAULT_ERROR);
+        }
         $redis_config = $this->_getConfig();
         $host_name = $redis_config['tables'][$this->table];
         if (empty($redis_config['hosts'][$host_name])) {
@@ -31,7 +35,39 @@ class RedisModel {
                 ExceptionCode::REDIS_CONFIG_ERROR);
         }
         $redis_config = $redis_config['hosts'][$host_name];
-        $this->_initiallize($redis_config);
+        $redis_config = $this->filterRedisConfig($redis_config);
+        $this->redis = $this->getRedis($redis_config);
+    }
+    /**
+     * destruct
+     */
+    public function __destruct() {
+        $this->redis->close();
+    }
+    /**
+     * apply config
+     * @param array $config
+     * @throws RedisException
+     */
+    private function filterRedisConfig($config) {
+
+        if(empty($config) || empty($config['host'])) {
+            throw new RedisException('host empty',
+                ExceptionCode::REDIS_CONFIG_ERROR);
+        }
+        $redis_config = [];
+        $redis_config['host'] = $config['host'];
+        if(!$this->checkIsUnixSocket($config)) {
+            $redis_config['port'] = empty($config['port']) ? 6379 : $config['port'];
+        }
+        $redis_config['dbname'] = empty($config['dbname']) ? 0 : $config['dbname'];
+        $redis_config['prefix'] = empty($config['prefix']) ? '' : $config['prefix'];
+        $redis_config['password'] = empty($config['password']) ? '' : $config['password'];
+        $redis_config['default_ttl'] = empty($config['default_ttl']) ? 0 : $config['default_ttl'];
+        $redis_config['timeout'] = empty($config['timeout']) ? 3 : $config['timeout'];
+        $redis_config['connection_timeout'] = empty($config['connection_timeout']) ? 3000 : $config['connection_timeout'] * 1000;
+        $redis_config['retry_timeout'] = empty($config['retry_timeout']) ? 3 : $config['retry_timeout'];
+        return $redis_config;
     }
     /**
      * get redis config
@@ -53,49 +89,79 @@ class RedisModel {
         return $redis_config;
     }
     /**
-     * initiallize
-     * @param array $redis_config
+     * check is host & port or unix socket
+     * @param  array $config
      * @return bool
      */
-    protected function _initiallize($redis_config) {
-
-        $resource_pool = ResourcePool::getInstance();
-        $resource_key = $resource_pool->getResourceKey('redis', $redis_config);
-        $redis = $resource_pool->getResource('redis', $resource_key);
-        if ($redis instanceof Redis) {
-            $this->redis = $redis;
+    private function checkIsUnixSocket($config) {
+        if(substr($config['host'], 0, 1) == '/') {
             return true;
         }
-        $this->redis = new Redis();
-        $this->redis->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
-        if ($this->redis->pconnect($redis_config['host'], $redis_config['port'], $redis_config['timeout']) === false) {
-            throw new RedisException(
+        return false;
+    }
+    /**
+     * get memcache connection
+     * @return Redis
+     */
+    private function getRedis($redis_config) {
+        if (!extension_loaded('redis')) {
+            return null;
+        }
+        $resource_type = 'redis';
+        $resource_pool = ResourcePool::getInstance();
+        $resource_key = $resource_pool->getResourceKey($redis_config);
+        $redis = $resource_pool->getResource($resource_type, $resource_key);
+        if($redis) {
+            return $redis;
+        }
+        $redis = new Redis();
+        $redis = $this->initialize($redis, $redis_config);
+        $resource_pool->registerResource($resource_type, $resource_key, $redis);
+        return $redis;
+    }
+    /**
+     * initialize redis
+     * @param  Redis $redis
+     * @return Redis
+     */
+    private function initialize($redis, $redis_config) {
+        if($this->checkIsUnixSocket($redis_config)) {
+            if($redis->pconnect($redis_config['host']) === false) {
+                // unix socket
+                throw new RedisException(
+                    'redis connection failed: ' . $redis_config['host'],
+                    ExceptionCode::REDIS_CONNECTION_ERROR);
+            }
+        } else {
+            if($redis->pconnect($redis_config['host'], $redis_config['port'], $redis_config['timeout'], NULL,
+                $redis_config['retry_timeout']) === false) {
+                throw new RedisException(
                     'redis connection failed: ' . $redis_config['host'] . ':' . $redis_config['port'],
                     ExceptionCode::REDIS_CONNECTION_ERROR);
+            }
         }
-        if (!empty($redis_config['password']) && $this->redis->auth($redis_config['password']) === false) {
-            __add_info(
-                'RedisDriver#auth error',
-                InfoCollector::TYPE_LOGIC,
-                InfoCollector::LEVEL_DEBUG
-            );
+        $redis->setOption(Redis::OPT_SERIALIZER, Redis::SERIALIZER_IGBINARY);
+        $redis->select($redis_config['dbname']);
+        if($redis_config['prefix']) {
+            $redis->setOption(Redis::OPT_PREFIX, $redis_config['prefix']);
+        }
+        if($redis_config['password'] != '' && $redis->auth($redis_config['password']) === false) {
             throw new RedisException(
                 'redis auth failed: ' . $redis_config['host'] . ':' . $redis_config['password'],
                 ExceptionCode::REDIS_AUTH_ERROR);
         }
-        if (!$this->redis->select($redis_config['dbname'])) {
-            __add_info(
-                'RedisDriver#select database failed: ' . $redis_config['dbname'],
-                InfoCollector::TYPE_LOGIC,
-                InfoCollector::LEVEL_DEBUG
-            );
-            return false;
-        }
-        if (!empty($redis_config['prefix'])) {
-            $this->redis->setOption(Redis::OPT_PREFIX, $redis_config['prefix']);
-        }
-        $resource_pool->registerResource('redis', $resource_key, $this->redis);
-        return true;
+        $this->dbname = $redis_config['dbname'];
+        $this->auth = $redis_config['password'];
+        return $redis;
     }
-
+    /**
+     * get ready
+     * @return void
+     */
+    protected function getReady() {
+        $this->redis->select($this->dbname);
+        if($this->auth != '') {
+            $this->redis->auth($this->auth);
+        }
+    }
 }

@@ -1,14 +1,18 @@
 <?php
 namespace core;
 
-use \ClassLoader,
-    \Application,
-    \Datatype,
-    core\http\Parameter,
-    info\InfoCollector,
-    exception\ViewException,
-    view\ViewInterface,
-    exception\ExceptionCode;
+use Application;
+use ClassLoader;
+use core\http\Request;
+use core\http\Response;
+use Datatype;
+use ErrorMessage;
+use exception\AppException;
+use exception\ExceptionCode;
+use exception\ViewException;
+use info\InfoCollector;
+use Validator;
+use view\ViewInterface;
 
 /**
  * Controller
@@ -37,9 +41,9 @@ abstract class Controller {
     protected $_cache_param;
     /**
      * _GET and _POST params from server
-     * @var Parameter
+     * @var Request
      */
-    protected $_param;
+    protected $_request;
     /**
      * View
      * @var ViewInterface
@@ -66,54 +70,66 @@ abstract class Controller {
      * @var array
      */
     protected $_controller_render_params;
-
+    /**
+     * error message
+     * @var ErrorMessage
+     */
+    protected $_error_message;
+    /**
+     * validator
+     * @var Validator
+     */
+    protected $_validator;
     /**
      * __constructor
      */
     public function __construct() {
-        $this->_param = Parameter::getInstance();
+
+        $this->_request = Request::getInstance();
         // set possible controller render params
         $this->setRenderControllerParams();
         $view_config = $this->getViewConfig();
         $this->setViewType($view_config['type']);
-        $this->_view_param = array();
+        $this->_view_param    = [];
+        $this->_error_message = ErrorMessage::getInstance();
+        $this->_validator     = Validator::getInstance();
     }
     /**
      * set controller render params
      */
     private function setRenderControllerParams() {
+
         global $GLOBAL;
         if (empty($GLOBAL['render_controller_param'])) {
-            return ;
+            return;
         }
-        $this->_controller_render_params = array();
+        $this->_controller_render_params = [];
         foreach ($GLOBAL['render_controller_param'] as $key => $value) {
             $this->_controller_render_params[$key] = $value;
         }
         unset($GLOBAL['render_controller_param']);
     }
     /**
-     * functions defined in Controller Class are disabled for user
-     * @return array
-     */
-    public function getDisabledFunctions() {
-        return ;
-    }
-    /**
      * get paramter value from request parameters
      * @param string $key
      * @param mixed $default
+     * @param int $data_type
+     * @param string $method
      * @return mixed
      */
-    final public function getParam($key, $default, $data_type = Datatype::DATA_TYPE_STRING) {
+    public function getParam($key, $default, $data_type = Datatype::DATA_TYPE_STRING, $method = null) {
+
         // get from _GET OR _POST
-        $val = $this->_param->get($key, $default, $data_type);
-        if (empty($val) &&
-            is_array($this->_controller_render_params) &&
-            array_key_exists($key, $this->_controller_render_params)) {
+        $val = $this->_request->getParam($key, $default, $data_type, $method);
+        if (empty($val)
+            && is_array($this->_controller_render_params)
+            && array_key_exists($key, $this->_controller_render_params)) {
             // get from controller rendering params
             $val = $this->_controller_render_params[$key];
         }
+        // message
+        __add_info(sprintf('get param: %s => %s', $key, var_export($val, true)),
+            InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
         return $val;
     }
     /**
@@ -121,7 +137,7 @@ abstract class Controller {
      * @param string $key
      * @param mixed $val
      */
-    final protected function setViewParam($key, $value) {
+    protected function setViewParam($key, $value) {
         $this->_view_param[$key] = $value;
     }
     /**
@@ -129,7 +145,8 @@ abstract class Controller {
      * @param string $key
      * @param mixed $val
      */
-    final protected function getViewParam($key) {
+    protected function getViewParam($key) {
+
         if (!array_key_exists($key, $this->_view_param)) {
             return null;
         }
@@ -140,9 +157,10 @@ abstract class Controller {
      * @param string $key
      * @param mixed $val
      */
-    final protected function removeViewParam($key) {
+    protected function removeViewParam($key) {
+
         if (!array_key_exists($key, $this->_view_param)) {
-            return ;
+            return;
         }
         unset($this->_view_param[$key]);
     }
@@ -151,6 +169,7 @@ abstract class Controller {
      * @param string $view_type
      */
     final protected function setViewType($view_type) {
+
         $this->_view_type = $view_type;
         // message
         __add_info(sprintf('view type has been set to: %s', $view_type),
@@ -167,18 +186,23 @@ abstract class Controller {
      * @throws ViewException
      */
     final protected function setView($view_type) {
+
         switch ($view_type) {
-            case ViewInterface::VIEW_TYPE_SMARTY:
-                $this->_view = ClassLoader::loadClass('\view\SmartyView');  break;
-            case ViewInterface::VIEW_TYPE_RAIN:
-                $this->_view = ClassLoader::loadClass('\view\RainView');  break;
-            case ViewInterface::VIEW_TYPE_JSON:
-                $this->_view = ClassLoader::loadClass('\view\JsonView');  break;
-            case ViewInterface::VIEW_TYPE_TEXT:
-                $this->_view = ClassLoader::loadClass('\view\TextView');  break;
-            default :
-                throw new ViewException('view type not support: ' . $view_type,
-                    ExceptionCode::VIEW_TYPE_NOT_SUPPORT);
+        case ViewInterface::VIEW_TYPE_SMARTY:
+            $this->_view = ClassLoader::loadClass('\view\SmartyView');
+            break;
+        case ViewInterface::VIEW_TYPE_RAIN:
+            $this->_view = ClassLoader::loadClass('\view\RainView');
+            break;
+        case ViewInterface::VIEW_TYPE_JSON:
+            $this->_view = ClassLoader::loadClass('\view\JsonView');
+            break;
+        case ViewInterface::VIEW_TYPE_TEXT:
+            $this->_view = ClassLoader::loadClass('\view\TextView');
+            break;
+        default:
+            throw new ViewException('view type not support: ' . $view_type,
+                ExceptionCode::VIEW_TYPE_NOT_SUPPORT);
         }
         if ($this->_view) {
             // message
@@ -190,6 +214,7 @@ abstract class Controller {
      * @throws ViewException
      */
     protected function getViewConfig() {
+
         $view_config = Application::getConfigByKey('view');
         if (empty($view_config)) {
             $view_config = APPLICATION_CONFIG_DIR . APPLICATION_ENVI . DS . 'view.php';
@@ -198,7 +223,7 @@ abstract class Controller {
                     'config file not exist: ' . $view_config,
                     ExceptionCode::VIEW_CONFIG_FILE_NOT_FOUND);
             }
-            $view_config = include($view_config);
+            $view_config = include $view_config;
             Application::setConfig('view', $view_config);
         }
         return $view_config;
@@ -207,6 +232,7 @@ abstract class Controller {
      * render
      */
     final public function render($module, $controller_class, $action_method) {
+
         if (empty($this->_view)) {
             $this->setView($this->_view_type);
             if (empty($this->_view)) {
@@ -215,32 +241,32 @@ abstract class Controller {
             $this->_view->init($this->getViewConfig());
         }
         if (empty($this->_view_file_path) && in_array($this->_view_type,
-            array(ViewInterface::VIEW_TYPE_RAIN, ViewInterface::VIEW_TYPE_SMARTY))) {
+            [ViewInterface::VIEW_TYPE_RAIN, ViewInterface::VIEW_TYPE_SMARTY])) {
             $this->_view_file_path = $this->getViewFilePath($module, $controller_class, $action_method);
+        }
+        $response = Response::getInstance();
+        $response->setIsCompress(defined('APPLICATION_COMPRESS_ENABLED') && APPLICATION_COMPRESS_ENABLED);
+        // output encode
+        $output_encode = $this->_view->getOutputEncode();
+        switch ($this->_view_type) {
+        case ViewInterface::VIEW_TYPE_SMARTY:
+        case ViewInterface::VIEW_TYPE_RAIN:
+            $response->setHeader('Content-Type', "text/html; charset={$output_encode}");
+            break;
+        case ViewInterface::VIEW_TYPE_TEXT:
+            $response->setHeader('Content-Type', "text/plain; charset={$output_encode}");
+            break;
+        case ViewInterface::VIEW_TYPE_JSON:
+            $response->setHeader('Cache-Control', 'no-cache, must-revalidate');
+            $response->setHeader('Content-Type', "text/json; charset={$output_encode}");
+            break;
+        default:
+            throw new ViewException('view type not support: ' . $this->_view_type,
+                ExceptionCode::VIEW_TYPE_NOT_SUPPORT);
         }
         // output contents
         $output = $this->_view->render($this->_view_file_path, $this->_view_param, $this->_cache_param);
-        // output encode
-        $output_encode = $this->_view->getOutputEncode();
-        // enable compress ?
-        $is_compress = defined('APPLICATION_COMPRESS_ENABLED') && APPLICATION_COMPRESS_ENABLED;
-        // default compress level
-        $compress_level = 5;
-        switch ($this->_view_type) {
-            case ViewInterface::VIEW_TYPE_SMARTY:
-            case ViewInterface::VIEW_TYPE_RAIN:
-                send_http_response('html', $output, $output_encode, $is_compress, $compress_level);
-                break;
-            case ViewInterface::VIEW_TYPE_TEXT:
-                send_http_response('text', $output, $output_encode, $is_compress, $compress_level);
-                break;
-            case ViewInterface::VIEW_TYPE_JSON:
-                send_http_response('json', $output, $output_encode, $is_compress, $compress_level);
-                break;
-            default :
-                throw new ViewException('view type not support: ' . $this->_view_type,
-                    ExceptionCode::VIEW_TYPE_NOT_SUPPORT);
-        }
+        echo_pro($output);
     }
     /**
      * if use smarty or rain view, we need template file
@@ -251,7 +277,8 @@ abstract class Controller {
      * @return string
      */
     protected function getViewFilePath($module, $controller_class, $action_method) {
-        $controller_class = strtolower(substr($controller_class, strrpos($controller_class, '\\') + 1, -10));
+
+        $controller_class = lcfirst(substr($controller_class, strrpos($controller_class, '\\') + 1, -10));
         return "{$module}/{$controller_class}/{$action_method}.tpl";
     }
     /**
@@ -261,9 +288,10 @@ abstract class Controller {
      * @param array | null $param
      */
     final public function renderController($controller_class, $action_method, array $param = null) {
+
         global $GLOBAL;
         $GLOBAL['controller_class'] = $controller_class;
-        $GLOBAL['action_method']= $action_method;
+        $GLOBAL['action_method']    = $action_method;
         // mark render controller
         $GLOBAL['is_controller_render_controller'] = 1;
         // set render controller param
@@ -275,21 +303,34 @@ abstract class Controller {
      * @param mixed $params
      */
     final protected function redirect($url, $params = null) {
-        $url = add_get_params_to_url($url, $params);
-        // message
-        __add_info(sprintf('redirect to: %s', $url), InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
-        header('Location:' . $url);
+        redirect($url, $params);
     }
     /**
      * render to error page when exception occurs
      * default: find ErrorController under the same directory
-     * @param \Exception $e
+     * @param Exception $e
      */
     final public function renderError($e) {
-        $class_name = get_class($this);
-        $module_name = ucfirst(substr($class_name, 0, strpos($class_name, '\\')));
+
+        $class_name       = get_class($this);
+        $module_name      = ucfirst(substr($class_name, 0, strpos($class_name, '\\')));
         $error_controller = preg_replace('#\w+$#', $module_name . 'ErrorController', $class_name);
-        $this->renderController($error_controller, 'handle', array('render_error_exception' => $e));
+        $this->renderController($error_controller, 'handle', ['render_error_exception' => $e]);
+    }
+    /**
+     * get is ajax request
+     * @return boolean
+     */
+    final public function isAjaxRequest() {
+        return Request::isAjaxRequest();
+    }
+    /**
+     * get error message
+     * @param  int $error_code
+     * @return string
+     */
+    protected function getErrorMessage($error_code) {
+        return $this->_error_message->getErrorMessage($error_code);
     }
     /**
      * __call
@@ -297,12 +338,7 @@ abstract class Controller {
      * @param array $arguments
      */
     final public function __call($name, $arguments) {
-        $name = $this->convertMethodName($name);
-        if (!method_exists($this, $name)) {
-            send_http_response('forbidden');
-            return ;
-        }
-        $this->$name($arguments);
+        throw new AppException('action not callable:' . $name, ExceptionCode::APP_ACTION_NOT_CALLABLE);
     }
     /**
      * __destruct
@@ -321,11 +357,12 @@ abstract class Controller {
      *  ax_bx_cx -> aBxCx
      */
     private function convertMethodName($method_name) {
+
         if (!preg_match('#^([a-z]+_)+[a-z]+$#', $method_name)) {
             return $method_name;
         }
         $method_name_word_list = explode('_', $method_name);
-        foreach($method_name_word_list as $key => $method_name_word) {
+        foreach ($method_name_word_list as $key => $method_name_word) {
             if (!$key) {
                 continue;
             }
@@ -337,26 +374,68 @@ abstract class Controller {
      * clear all controller variables
      */
     private function clearControllerVariables() {
-        $this->_cache_param = null;
+
+        $this->_cache_param              = null;
         $this->_controller_render_params = null;
-        $this->_param = null;
-        $this->_view = null;
-        $this->_view_file_path = null;
-        $this->_view_param = null;
-        $this->_view_type = null;
+        $this->_request                  = null;
+        $this->_view                     = null;
+        $this->_view_file_path           = null;
+        $this->_view_param               = null;
+        $this->_view_type                = null;
     }
-
     /**
-     * check if request is ajax
+     * validate parameter
+     * @param string $variable_name
+     * @param mixed $value
+     * @param string $rule
+     * @param int $type
+     * @param string $reg
+     * @return boolean
      */
-    protected function isAjaxRequest() {
-        if(isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-            return true;
-        }
-        return false;
-    }
+    protected function validate($variable_name, $value, $rule, $type, $reg = null) {
 
+        $validate_result_list = $this->_validator->validate([
+            $variable_name => [
+                'value' => $value,
+                'rule'  => $rule,
+                'type'  => $type,
+                'reg'   => $reg,
+            ],
+        ]);
+        return $validate_result_list[$variable_name];
+    }
+    /**
+     * validate data map
+     * @param array $validate_data_map
+     *   - must be like: array(
+     *       %variable_name1% => array('value' => %variable_value1%, 'rule' => %rule1%, 'type' => %type1%, 'reg' => %reg1%),
+     *       %variable_name2% => array('value' => %variable_value2%, 'rule' => %rule2%, 'type' => %type2%, 'reg' => %reg2%),
+     *       ...
+     *   )
+     *   rule:
+     *       1. split by ';' when multi-condition
+     *       2. sample:
+     *              $var != null         : not null
+     *               !empty($var)        : not empty
+     *              $var >(=) 2          : >(=) 2
+     *              $var <(=) 100        : <(=) 100
+     *              $var > 50
+     *              && $var < 100        : > 50 and < 100
+     *              $var < 50
+     *              || $var > 100        : < 50 or > 100
+     *              in_array(1,2)        : in list[1,2]
+     *              !in_array(1,2)       : not in list [1,2]
+     *              strlen(x) >(=) 10    : len >(=) 10
+     *              count(x) >(=) 10     : count >(=) 10
+     * @return array (
+     *     %variable_name1% => %validate_variable_result1%,
+     *     %variable_name2% => %validate_variable_result2%
+     *     ...
+     * )
+     */
+    protected function validateDataMap($validate_data_map) {
+        return $this->_validator->validate($validate_data_map);
+    }
     /**
      * prefilter
      */

@@ -16,6 +16,8 @@
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
+use exception\PaginatorException,
+    exception\ExceptionCode;
 
 class Paginator {
 
@@ -35,6 +37,9 @@ class Paginator {
         $this->init();
         if($page_size) {
             $this->page_size = $page_size;
+        }
+        if(!$this->page_size) {
+            throw new PaginatorException("page size is zero", ExceptionCode::PAGINATOR_PAGESIZE);
         }
         $total_pages = $total_item_count / $this->page_size;
         if($total_pages > 0) {

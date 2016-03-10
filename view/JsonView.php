@@ -1,8 +1,9 @@
 <?php
 namespace view;
 
-use exception\ExceptionCode,
-    view\ViewInterface;
+use exception\ExceptionCode;
+use String;
+use view\ViewInterface;
 
 /**
  * Json View
@@ -13,14 +14,14 @@ use exception\ExceptionCode,
  **/
 class JsonView implements ViewInterface {
 
-    protected $_output_encode = 'utf-8';
+    protected $_output_encode = String::ENCODE_UTF8;
 
     /**
      * initialize
      */
     public function init($config = null) {
         if (!empty($config['output_encode'])) {
-            $this->_output_encode = strtolower($config['output_encode']);
+            $this->_output_encode = $config['output_encode'];
         }
     }
     /**
@@ -43,10 +44,9 @@ class JsonView implements ViewInterface {
             return '';
         }
         $output = json_encode($template_var);
-        if ($this->_output_encode != 'utf-8') {
-            $output = mb_convert_encoding($output, $this->_output_encode, 'UTF-8');
+        if ($this->_output_encode != String::ENCODE_UTF8) {
+            $output = String::convert2UTF8($output, String::ENCODE_UTF8);
         }
         return $output;
-//         send_http_response('json', $template_var);
     }
 }

@@ -5,8 +5,7 @@ use Validator,
     resource\ResourcePool,
     resource\db\Db,
     resource\cache\Cache,
-    socket\SocketServer,
-    exception\SocketException;
+    socket\SocketServer;
 
 /**
  * Socket Server For Resource Pool

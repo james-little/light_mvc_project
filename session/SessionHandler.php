@@ -1,10 +1,9 @@
 <?php
 namespace session;
-use exception\SessionException,
-    exception\ExceptionCode,
+use ClassLoader,
     info\InfoCollector,
     resource\cache\Cache,
-    \Session;
+    Session;
 
 /**
  * Session Handler
@@ -23,9 +22,9 @@ class SessionHandler {
      */
     private function __construct($model_class = null) {
         if($model_class) {
-            $this->model = \ClassLoader::loadClass($model_class);
+            $this->model = ClassLoader::loadClass($model_class);
         }
-        $this->cache = Cache::getInstance(Cache::TYPE_MEMCACHED);
+        $this->cache = Cache::getInstance();
         $this->lifetime = ini_get('session.gc_maxlifetime');
     }
     /**

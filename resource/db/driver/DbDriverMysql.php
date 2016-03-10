@@ -4,9 +4,11 @@ namespace resource\db\driver;
 use resource\db\driver\DbDriverInterface,
     exception\DbException,
     info\InfoCollector,
+    resource\ResourcePool,
     exception\ExceptionCode,
-    \PDO,
-    \PDOStatement;
+    Exception,
+    PDO,
+    PDOStatement;
 
 /**
  * mysql driver class
@@ -25,6 +27,7 @@ class DbDriverMysql implements DbDriverInterface {
     const METHOD_QUERY_ROW = 2;
     const METHOD_QUERY_COLUMN = 3;
     const METHOD_EXEC = 4;
+    const RESOURCE_TYPE = 'pdo_mysql';
 
     private $pdo;
     private $statement;
@@ -156,7 +159,7 @@ class DbDriverMysql implements DbDriverInterface {
      */
     private function query($method, $sql, $param = array(), $arg = array()) {
 
-        if (!$this->pdo instanceof \PDO) {
+        if (!$this->pdo instanceof PDO) {
             throw new DbException('pdo not set', ExceptionCode::DB_ACCESS_OBJ_ERROR);
         }
         $result = null;
@@ -185,7 +188,7 @@ class DbDriverMysql implements DbDriverInterface {
                 $last_error_code = $this->statement->errorCode();
                 $last_error_info = $this->statement->errorInfo();
                 throw new DbException(
-                    sprintf('pdo execute error[ %s ]: %s', $last_error_code, $last_error_info['2']),
+                    sprintf('pdo execute error[ %s ]: %s; sql:%s', $last_error_code, $last_error_info['2'], $sql),
                     ExceptionCode::DB_EXECUTE_ERROR
                 );
             }
@@ -220,60 +223,12 @@ class DbDriverMysql implements DbDriverInterface {
                     break;
             }
             $this->statement->closeCursor();
-        } catch(\PDOException $e) {
-            throw new DbException('db error: ' . $e->getMessage(),
+        } catch(Exception $e) {
+            throw new DbException(sprintf('db error: %s, sql: %s', $e->getMessage(), $sql),
                 ExceptionCode::DB_FETCH_ERROR);
         }
         $this->close();
         return $result;
-    }
-
-
-
-    /**
-     * get connect string for pdo
-     * @param string $host
-     * @param string $dbname
-     * @param int $port
-     * @return string
-     */
-    private function getConnectString($host, $dbname, $port, $socket = null) {
-        $socket = $socket === null ? ini_get('mysql.default_socket') : $socket;
-        $connect_string = 'mysql:unix_socket=' . $socket. ';';
-        $connect_string .= "dbname={$dbname};charset=utf8;port={$port};host={$host}";
-        return $connect_string;
-    }
-
-    /**
-     * get connection
-     * @throws DbException
-     */
-    public function getConnection($config) {
-        if (empty($config['host']) || empty($config['dbname'])) {
-            throw new DbException('not enough configuration information', ExceptionCode::DB_CONFIG_NOT_EXIST);
-        }
-        $config['port'] = empty($config['port']) ? 3306 : $config['port'];
-        $socket = empty($config['socket']) ? null : $config['socket'];
-        $connect_string = $this->getConnectString($config['host'], $config['dbname'], $config['port'], $socket);
-        __add_info(
-            'DbDriverMysql#connect_string: ' . $connect_string,
-            InfoCollector::TYPE_LOGIC,
-            InfoCollector::LEVEL_DEBUG
-        );
-        try {
-            $connection = new PDO($connect_string, $config['dbuser'], $config['dbpass'],
-                array(PDO::ATTR_AUTOCOMMIT => 1, PDO::ATTR_PERSISTENT => true));
-            $connection->setAttribute(PDO::ATTR_ERRMODE,  PDO::ERRMODE_EXCEPTION);
-            $connection->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
-        } catch (\PDOException $e) {
-            __add_info(
-                'DbDriverMysql#connection error: ' . $e->getMessage(),
-                InfoCollector::TYPE_EXCEPTION,
-                InfoCollector::LEVEL_DEBUG
-            );
-            throw new DbException('db error: ' . $e->getMessage(), ExceptionCode::DB_ACCESS_OBJ_ERROR);
-        }
-        return $connection;
     }
     /**
      * begin transaction
@@ -293,5 +248,80 @@ class DbDriverMysql implements DbDriverInterface {
     public function rollback() {
         return $this->pdo->rollBack();
     }
+    /**
+     * get connect string for pdo
+     * @param string $host
+     * @param string $dbname
+     * @param int $port
+     * @return string
+     */
+    private function getConnectString($host, $dbname, $port, $socket = null) {
+        $socket = $socket === null ? ini_get('mysql.default_socket') : $socket;
+        $connect_string = '';
+        if($socket) {
+            $connect_string = 'mysql:unix_socket=' . $socket . ';';
+        } else {
+            $connect_string = "mysql:host={$host};port={$port};";
+        }
+        $connect_string .= "dbname={$dbname};charset=utf8";
+        return $connect_string;
+    }
 
+    /**
+     * get connection
+     * @throws DbException
+     */
+    public function getConnection($config) {
+        if (!extension_loaded('pdo_mysql')) {
+            return null;
+        }
+        $mysql_config = $this->filterMysqlConfig($config);
+        $resource_pool = ResourcePool::getInstance();
+        $resource_key = $resource_pool->getResourceKey($mysql_config);
+        $pdo = $resource_pool->getResource(self::RESOURCE_TYPE, $resource_key);
+        if($pdo) {
+            return $pdo;
+        }
+        $connect_string = $this->getConnectString($mysql_config['host'], $mysql_config['dbname'],
+            $mysql_config['port'], $mysql_config['socket']);
+        __add_info(
+            'DbDriverMysql#connect_string: ' . $connect_string,
+            InfoCollector::TYPE_LOGIC,
+            InfoCollector::LEVEL_DEBUG
+        );
+        try {
+            $pdo = new PDO($connect_string, $mysql_config['dbuser'], $mysql_config['dbpass'],
+                array(PDO::ATTR_AUTOCOMMIT => 1, PDO::ATTR_PERSISTENT => true));
+        } catch (PDOException $e) {
+            __add_info(
+                'DbDriverMysql#pdo error: ' . $e->getMessage(),
+                InfoCollector::TYPE_EXCEPTION,
+                InfoCollector::LEVEL_DEBUG
+            );
+            throw new DbException('db error: ' . $e->getMessage(), ExceptionCode::DB_ACCESS_OBJ_ERROR);
+        }
+        $pdo->setAttribute(PDO::ATTR_ERRMODE,  PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+        $resource_pool->registerResource(self::RESOURCE_TYPE, $resource_key, $pdo);
+        return $pdo;
+    }
+    /**
+     * filter mysql config
+     * @param array $config
+     * @throws DbException
+     */
+    private function filterMysqlConfig($config) {
+
+        if(empty($config) || empty($config['host']) || empty($config['dbname'])) {
+            throw new DbException('not enough configuration information', ExceptionCode::DB_CONFIG_NOT_EXIST);
+        }
+        $mysql_config = [];
+        $mysql_config['host'] = empty($config['host']) ? 'localhost' : $config['host'];
+        $mysql_config['port'] = empty($config['port']) ? 3306 : $config['port'];
+        $mysql_config['socket'] = empty($config['socket']) ? null : $config['socket'];
+        $mysql_config['dbname'] = empty($config['dbname']) ? '' : $config['dbname'];
+        $mysql_config['dbuser'] = empty($config['dbuser']) ? '' : $config['dbuser'];
+        $mysql_config['dbpass'] = empty($config['dbpass']) ? '' : $config['dbpass'];
+        return $mysql_config;
+    }
 }

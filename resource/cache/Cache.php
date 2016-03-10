@@ -7,8 +7,8 @@ namespace resource\cache;
  * @package resource\cache
  * @version 1.0
  **/
-use info\InfoCollector,
-    resource\ResourcePool,
+use Application,
+    ClassLoader,
     exception\CacheException,
     exception\ExceptionCode;
 
@@ -24,39 +24,33 @@ class Cache {
     /**
      * __construct
      */
-    protected function __construct() {}
+    protected function __construct() {
+        $this->bindCacheAdapter();
+    }
     /**
      * singleton
      * @throws CacheException
      */
-    public static function getInstance($type) {
-        if (self::$_instance === null) {
-            self::$_instance = new self();
+    public static function getInstance() {
+        if (self::$_instance !== null) {
+            return self::$_instance;
         }
-        self::$_instance->bindCacheAdapter($type);
+        self::$_instance = new self();
         return self::$_instance;
     }
     /**
      * bind cache
-     * @param string $type
      * @param array $config
      * @throws CacheException
      */
-    protected function bindCacheAdapter($type) {
-
-        $cache_config = $this->getCacheConfig($type);
+    protected function bindCacheAdapter() {
+        $cache_config = $this->getCacheConfig();
         if (empty($cache_config)) {
             return $this;
         }
-        $resource_pool = ResourcePool::getInstance();
-        $resource_key = $resource_pool->getResourceKey('cache_' . $type, $cache_config);
-        $adapter = $resource_pool->getResource('cache', $resource_key);
-        if (!$adapter) {
-            $adapter = $this->getCacheAdapter($type);
-            $adapter->applyConfig($cache_config);
-            $adapter->bindConnection($adapter->getConnection());
-            $resource_pool->registerResource('cache', $resource_key, $adapter);
-        }
+        $adapter = $this->getCacheAdapter($cache_config['type']);
+        $adapter->applyConfig($cache_config);
+        $adapter->bindConnection($adapter->getConnection());
         $this->adapter = $adapter;
         return $this;
     }
@@ -70,14 +64,14 @@ class Cache {
         $adapter = null;
         switch ($type) {
             case self::TYPE_MEMCACHED:
-//                 $adapter = \ClassLoader::loadClass('\resource\cache\adapter\AdapterMemcache');
-                $adapter = \ClassLoader::loadClass('\resource\cache\adapter\AdapterMemcached');
+//                 $adapter = ClassLoader::loadClass('\resource\cache\adapter\AdapterMemcache');
+                $adapter = ClassLoader::loadClass('\resource\cache\adapter\AdapterMemcached');
                 break;
             case self::TYPE_APC:
-                $adapter = \ClassLoader::loadClass('\resource\cache\adapter\AdapterApc');
+                $adapter = ClassLoader::loadClass('\resource\cache\adapter\AdapterApc');
                 break;
             case self::TYPE_REDIS:
-                $adapter = \ClassLoader::loadClass('\resource\cache\adapter\AdapterRedis');
+                $adapter = ClassLoader::loadClass('\resource\cache\adapter\AdapterRedis');
                 break;
             default:
                 throw new CacheException('specified adapter not supported yet: ' . $adapter,
@@ -89,8 +83,8 @@ class Cache {
      * get cache config
      * @throws AppException
      */
-    private function getCacheConfig($type) {
-        $cache_config = \Application::getConfigByKey('cache');
+    private function getCacheConfig() {
+        $cache_config = Application::getConfigByKey('cache');
         if (empty($cache_config)) {
             $cache_config = APPLICATION_CONFIG_DIR . APPLICATION_ENVI . DS . 'cache.php';
             if (!is_file($cache_config)) {
@@ -99,24 +93,26 @@ class Cache {
                     ExceptionCode::CACHE_CONFIG_NOT_EXIST);
             }
             $cache_config = include($cache_config);
-            \Application::setConfig('cache', $cache_config);
+            Application::setConfig('cache', $cache_config);
         }
         if (!$cache_config['enabled']) {
-            return array();
+            return [];
         }
+        $type = $cache_config['type'];
         switch ($type) {
             case self::TYPE_MEMCACHED:
-                $cache_config = isset($cache_config['memcached']) ? $cache_config['memcached'] : array();
+                $cache_config = isset($cache_config['memcached']) ? $cache_config['memcached'] : [];
                 break;
             case self::TYPE_APC:
-                $cache_config = isset($cache_config['apc']) ? $cache_config['apc'] : array();
+                $cache_config = isset($cache_config['apc']) ? $cache_config['apc'] : [];
                 break;
             case self::TYPE_REDIS:
-                $cache_config = isset($cache_config['redis']) ? $cache_config['redis'] : array();
+                $cache_config = isset($cache_config['redis']) ? $cache_config['redis'] : [];
                 break;
             default:
-                return array();
+                return [];
         }
+        $cache_config['type'] = $type;
         return $cache_config;
     }
     /**

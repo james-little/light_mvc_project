@@ -1,6 +1,5 @@
 <?php
 
-use exception\ExceptionCode;
 use exception\SessionException;
 
 /**

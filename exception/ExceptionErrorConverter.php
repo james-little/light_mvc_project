@@ -9,8 +9,6 @@
  **/
 namespace exception;
 
-use exception\ExceptionCode;
-
 class ExceptionErrorConverter {
 
     private static $instance;

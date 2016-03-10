@@ -39,9 +39,7 @@
  * @version 1.0
  **/
 
-use exception\ExceptionCode,
-    exception\AppException,
-    Overtrue\Pinyin\Pinyin;
+use Overtrue\Pinyin\Pinyin;
 
 require dirname(FRAMEWORK_ROOT_DIR) . '/overtrue-pinyin/src/Pinyin/Pinyin.php';
 

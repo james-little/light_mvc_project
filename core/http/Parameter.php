@@ -1,9 +1,11 @@
 <?php
 namespace core\http;
 
-use \Useragent,
-    \Datatype,
-    \Application;
+use Application;
+use core\http\Request;
+use Datatype;
+use String;
+use Useragent;
 
 class Parameter {
 
@@ -11,16 +13,13 @@ class Parameter {
     protected static $instance;
     protected $converted_column;
 
-    const METHOD_POST = 1;
-    const METHOD_GET = 2;
-
     /**
      * __constructor
      */
     protected function __construct() {
         fix_server_vars();
-        $this->_params = array_merge($_GET, $_POST);
-        $this->converted_column = array();
+        $this->_params          = array_merge($_GET, $_POST);
+        $this->converted_column = [];
     }
     /**
      * get instance
@@ -39,20 +38,20 @@ class Parameter {
      * @param mixed $default
      */
     public function get($key, $default = null, $data_type = Datatype::DATA_TYPE_STRING, $method = null) {
-        if($method) {
+        if ($method) {
             switch ($method) {
-                case self::METHOD_GET:
-                    if (!array_key_exists($key, $_GET)) {
-                        return $default;
-                    }
-                    return $this->convertData($_GET[$key], $data_type);
-                case self::METHOD_POST:
-                    if (!array_key_exists($key, $_POST)) {
-                        return $default;
-                    }
-                    return $this->convertData($_POST[$key], $data_type);
-                default:
-                    return null;
+            case Request::METHOD_GET:
+                if (!array_key_exists($key, $_GET)) {
+                    return $default;
+                }
+                return $this->convertData($_GET[$key], $data_type);
+            case Request::METHOD_POST:
+                if (!array_key_exists($key, $_POST)) {
+                    return $default;
+                }
+                return $this->convertData($_POST[$key], $data_type);
+            default:
+                return null;
             }
         }
         if (!array_key_exists($key, $this->_params)) {
@@ -61,7 +60,7 @@ class Parameter {
         if (!empty($this->converted_column[$key])) {
             return $this->_params[$key];
         }
-        $this->_params[$key] = $this->convertData($this->_params[$key], $data_type);
+        $this->_params[$key]          = $this->convertData($this->_params[$key], $data_type);
         $this->converted_column[$key] = 1;
         return $this->_params[$key];
     }
@@ -100,7 +99,7 @@ class Parameter {
      * convert data
      */
     protected function convertData($val, $data_type) {
-        $val = convert2utf8($val, Application::getInputEncoding());
+        $val = String::convert2UTF8($val, Application::getInputEncoding());
         $val = Datatype::convertDatatype($val, $data_type);
         return $val;
     }
@@ -120,11 +119,11 @@ class Parameter {
             foreach ($values as $key => $val) {
                 if (is_string($val)) {
                     $values[$key] = $emoji_instance->filter($val, 'input');
-                } else if (is_array($val)) {
+                } elseif (is_array($val)) {
                     $values = $this->convertEmoji($values[$key], $emoji_instance);
                 }
             }
-        } else if (is_string($values)) {
+        } elseif (is_string($values)) {
             $values = $emoji_instance->filter($values, 'input');
         }
         return $values;

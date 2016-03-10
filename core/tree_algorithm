@@ -1,112 +1,112 @@
 /*
-	 * for yui.treeview
-	 * 
-	 *	{foreach from=descendantRowArray as row}
-	 *			{$row.beforeTag}
-	 *			<a href="/index.php?id={$row.id}">
-	 *			{$row.name}
-	 *			</a>
-	 *			{$row.afterTag}
-	 *	 {/foreach}
-	 *
-	 * 			page1					page2
-	 *		 / 	  |		\				/	\
-	 * 	page11	page12	page13		page21	page22
-	 * 			/	\					    /    \
-	 * 		page121	page122				page221 page222
-	 * 
-	 * 	<ul>
-	 * 		<li><a href="%action%">page1</a>
-	 *			<ul><li><a>page11</a></li> 
-	 *				<li><a>page12</a>
-	 *				<ul><li><a>page121</a></li>
-	 *					<li><ul></ul></li></ul></li></ul></li>
-	 *					<li><a>page122</a></li></ul></li>
-	 *		<li><a>page2</a>
-	 *			<ul><li><a>page21</a></li>
-	 *				<li><a>page22</a>
-	 *				<ul><li><a>page221</a></li>
-	 *					<li><a>page222</a></li></ul></li></ul></li>
-	 *	</ul>
-	 */
-	protected function _setYuiViewTreeUlliTag($rowArray, $depth){
-		
-		$firstChildIdParentIdArray = $this->_getFirstChildIdParentIdArray($depth);
-		$lastChildIdParentIdArray = $this->_getLastChildIdParentIdArray($depth);
-		foreach($rowArray as $key => $row){
-			$rowArray[$key]['beforeTag'] = '';
-			$rowArray[$key]['afterTag'] = '';
-			$tempDepth = $row['tempDepth'];
-			if(isset($firstChildIdParentIdArray[$row['id']]) || !$key){
-				$rowArray[$key]['beforeTag'] = '<ul>';
-			}
-			$rowArray[$key]['beforeTag'] .= '<li>';
-			if($row['rgt'] - $row['lft'] == 1 || ($tempDepth == $depth && $depth)){
-				if ($row['rgt'] - $row['lft'] != 1){
-					$rowArray[$key]['afterTag'] .= '<ul></ul></li>';
-				}else{
-					$rowArray[$key]['afterTag'] .= '</li>';
-				}
-				$tempId = $row['id'];
-				while (isset($lastChildIdParentIdArray[$tempId]) && $tempDepth){
-					$rowArray[$key]['afterTag'] .= '</ul></li>';
-					$tempId = $lastChildIdParentIdArray[$tempId];
-					$tempDepth--;
-				}
-			}
-		}
-		$rowArray[$key]['afterTag'] = substr($rowArray[$key]['afterTag'], 0, -10).'</ul>';
-		return $rowArray;
-	}
-	/*
-	 * path
-	 * 		 a
-	 *	  /  	\
-	 * 	b	 	 c
-	 * 			/	\
-	 * 		   d     e
-	 *  a: /a/
-	 *  b: /a/b/
-	 *  c: /a/c/
-	 *  d: /a/c/d/
-	 *  e: /a/c/e/
-	*/
-	protected function _setPathTag($rowArray){
-		$array4Path = array();
-		foreach($rowArray as $key => $row){
-			$rowArray[$key]['path'] = '';
-			if (isset($row['ascii']) && $row['id'] != 0){
-				$array4Path[$row['depth']] = $row['ascii'];
-				foreach ($array4Path as $rowDepth => $rowAscii){
-					$rowArray[$key]['path'] .= "/{$rowAscii}";
-					if ($rowDepth == $row['depth']){
-						break;
-					}
-				}
-				if($rowArray[$key]['path']){
-					$rowArray[$key]['path'] .= '/';
-				}
-			}
-		}
-		return $rowArray;
-	}
-	
-	/*
-	 */
-	public function getYuiTreeViewString($depth = 0){
-		$isIncludeSelf = $depth ? false : true;
-		$rowArray = $this->_getDescendantRowArray($isIncludeSelf, 1, $depth);
-		$rowArray = $this->_setDescendantRowName($rowArray);
-		$rowArray = $this->_setDescendantRowAhref($rowArray);
-		$yuiTreeStr = '';
-		foreach ($rowArray as $key => $row){
-			if ($key){
-				$beforeTag = $row['beforeTag'];
-			}else{
-				$beforeTag = str_replace('<ul', '<ul id="%id%"', $row['beforeTag']);
-			}
-			$ahref = isset($row['ahref']) ? $row['ahref'] : "javascript:action('{$row['id']}');";
-			$yuiTreeStr .= "{$beforeTag}<a href=\"{$ahref}\">{$row['name']}</a>{$row['afterTag']}";
-		}
-		return $yuiTreeStr;
-	}
+     * for yui.treeview
+     *
+     *    {foreach from=descendantRowArray as row}
+     *            {$row.beforeTag}
+     *            <a href="/index.php?id={$row.id}">
+     *            {$row.name}
+     *            </a>
+     *            {$row.afterTag}
+     *     {/foreach}
+     *
+     *             page1                    page2
+     *         /       |        \                /    \
+     *     page11    page12    page13        page21    page22
+     *             /    \                        /    \
+     *         page121    page122                page221 page222
+     *
+     *     <ul>
+     *         <li><a href="%action%">page1</a>
+     *            <ul><li><a>page11</a></li>
+     *                <li><a>page12</a>
+     *                <ul><li><a>page121</a></li>
+     *                    <li><ul></ul></li></ul></li></ul></li>
+     *                    <li><a>page122</a></li></ul></li>
+     *        <li><a>page2</a>
+     *            <ul><li><a>page21</a></li>
+     *                <li><a>page22</a>
+     *                <ul><li><a>page221</a></li>
+     *                    <li><a>page222</a></li></ul></li></ul></li>
+     *    </ul>
+     */
+    protected function _setYuiViewTreeUlliTag($rowArray, $depth){
+
+        $firstChildIdParentIdArray = $this->_getFirstChildIdParentIdArray($depth);
+        $lastChildIdParentIdArray = $this->_getLastChildIdParentIdArray($depth);
+        foreach($rowArray as $key => $row){
+            $rowArray[$key]['beforeTag'] = '';
+            $rowArray[$key]['afterTag'] = '';
+            $tempDepth = $row['tempDepth'];
+            if(isset($firstChildIdParentIdArray[$row['id']]) || !$key){
+                $rowArray[$key]['beforeTag'] = '<ul>';
+            }
+            $rowArray[$key]['beforeTag'] .= '<li>';
+            if($row['rgt'] - $row['lft'] == 1 || ($tempDepth == $depth && $depth)){
+                if ($row['rgt'] - $row['lft'] != 1){
+                    $rowArray[$key]['afterTag'] .= '<ul></ul></li>';
+                }else{
+                    $rowArray[$key]['afterTag'] .= '</li>';
+                }
+                $tempId = $row['id'];
+                while (isset($lastChildIdParentIdArray[$tempId]) && $tempDepth){
+                    $rowArray[$key]['afterTag'] .= '</ul></li>';
+                    $tempId = $lastChildIdParentIdArray[$tempId];
+                    $tempDepth--;
+                }
+            }
+        }
+        $rowArray[$key]['afterTag'] = substr($rowArray[$key]['afterTag'], 0, -10).'</ul>';
+        return $rowArray;
+    }
+    /*
+     * path
+     *          a
+     *      /      \
+     *     b          c
+     *             /    \
+     *            d     e
+     *  a: /a/
+     *  b: /a/b/
+     *  c: /a/c/
+     *  d: /a/c/d/
+     *  e: /a/c/e/
+    */
+    protected function _setPathTag($rowArray){
+        $array4Path = array();
+        foreach($rowArray as $key => $row){
+            $rowArray[$key]['path'] = '';
+            if (isset($row['ascii']) && $row['id'] != 0){
+                $array4Path[$row['depth']] = $row['ascii'];
+                foreach ($array4Path as $rowDepth => $rowAscii){
+                    $rowArray[$key]['path'] .= "/{$rowAscii}";
+                    if ($rowDepth == $row['depth']){
+                        break;
+                    }
+                }
+                if($rowArray[$key]['path']){
+                    $rowArray[$key]['path'] .= '/';
+                }
+            }
+        }
+        return $rowArray;
+    }
+
+    /*
+     */
+    public function getYuiTreeViewString($depth = 0){
+        $isIncludeSelf = $depth ? false : true;
+        $rowArray = $this->_getDescendantRowArray($isIncludeSelf, 1, $depth);
+        $rowArray = $this->_setDescendantRowName($rowArray);
+        $rowArray = $this->_setDescendantRowAhref($rowArray);
+        $yuiTreeStr = '';
+        foreach ($rowArray as $key => $row){
+            if ($key){
+                $beforeTag = $row['beforeTag'];
+            }else{
+                $beforeTag = str_replace('<ul', '<ul id="%id%"', $row['beforeTag']);
+            }
+            $ahref = isset($row['ahref']) ? $row['ahref'] : "javascript:action('{$row['id']}');";
+            $yuiTreeStr .= "{$beforeTag}<a href=\"{$ahref}\">{$row['name']}</a>{$row['afterTag']}";
+        }
+        return $yuiTreeStr;
+    }

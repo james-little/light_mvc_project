@@ -2,17 +2,14 @@
 namespace resource\db\command;
 
 use exception\ExceptionCode;
-use \ClassLoader,
-    \ErrorCode,
-    \Application,
-    \Exception,
+use ClassLoader,
+    ErrorCode,
+    Application,
+    Exception,
     Monitor,
-    resource\ResourcePool,
     exception\DbException,
     info\InfoCollector,
-    resource\db\driver\DbDriverMysql,
     resource\db\driver\DbDriverInterface,
-    resource\db\DbPrivilege,
     log\LogInterface,
     log\writer\LogWriterStream;
 
@@ -273,15 +270,9 @@ class DbCommand {
         $db_config = $this->getDbConfig($sql);
         $db_config = $this->fillDbConfigDefault($db_config);
         $this->applyLogConfig($db_config);
-        $resource_pool = ResourcePool::getInstance();
-        $resource_key = $resource_pool->getResourceKey(get_class($this->driver), $db_config);
         while ($max_try_time) {
             try {
-                $connection = $resource_pool->getResource('db', $resource_key);
-                if (!$connection) {
-                    $connection = $this->driver->getConnection($db_config);
-                    $resource_pool->registerResource('db', $resource_key, $connection);
-                }
+                $connection = $this->driver->getConnection($db_config);
                 $this->driver->bindConnection($connection);
                 Monitor::reset();
                 switch ($method) {
@@ -313,13 +304,12 @@ class DbCommand {
                 break;
             } catch (DbException $e) {
                 $this->log($this->getExceptionMessage($e, $sql, $max_try_time, $param));
-                $resource_pool->unregisterResource('db', $resource_key);
                 __add_info(
                     sprintf(
                         'db_command_query#kill db connection %s for exception: %s. sql:%s',
                         $db_config['host'], $e->getMessage(), $sql
                     ),
-                    InfoCollector::TYPE_LOGIC,
+                    InfoCollector::TYPE_EXCEPTION,
                     InfoCollector::LEVEL_DEBUG
                 );
                 // get result error by exception code

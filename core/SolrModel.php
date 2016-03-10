@@ -1,12 +1,12 @@
 <?php
 namespace core;
 
-use \Application,
-    \SolrClient,
-    \SolrQuery,
-    \SolrInputDocument,
-    \SolrUpdateResponse,
-    \SolrQueryResponse,
+use Application,
+    SolrClient,
+    SolrQuery,
+    SolrInputDocument,
+    SolrUpdateResponse,
+    SolrQueryResponse,
     resource\ResourcePool,
     info\InfoCollector,
     exception\ExceptionCode,
@@ -40,9 +40,12 @@ class SolrModel {
                 ExceptionCode::SOLR_CONFIG_ERROR);
         }
         $solr_config = $solr_config['hosts'][$host_name];
-        if (!$this->_initiallize($solr_config)) {
+        $solr_config = $this->filterSolrConfig($solr_config);
+        $solr = $this->getSolr($solr_config);
+        if (!$solr) {
             throw new SolrException('solr server connection error', ExceptionCode::SOLR_CONFIG_ERROR);
         }
+        $this->solr = $solr;
     }
     /**
      * get solr config
@@ -63,31 +66,51 @@ class SolrModel {
         return $solr_config;
     }
     /**
-     * initiallize
-     * @param array $solr_config
-     * @return bool
+     * filter solr config
+     * @param array $config
+     * @throws SolrException
      */
-    protected function _initiallize($solr_config) {
+    private function filterSolrConfig($config) {
 
-        $resource_pool = ResourcePool::getInstance();
-        $resource_key = $resource_pool->getResourceKey('solr', $solr_config);
-        $solr = $resource_pool->getResource('solr', $resource_key);
-        if ($solr instanceof SolrClient) {
-            $this->solr = $solr;
-            return true;
+        if(empty($config) || empty($config['host'])) {
+            throw new SolrException('host empty',
+                ExceptionCode::SOLR_CONFIG_ERROR);
         }
-        $solr_config = filter_array($solr_config, array('host', 'port', 'username', 'password', 'path'), true);
-        $this->solr = null;
+        $solr_config = [];
+        $solr_config['host'] = $config['host'];
+        $solr_config['port'] = empty($config['port']) ? 8080 : $config['port'];
+        $solr_config['username'] = empty($config['username']) ? 0 : $config['username'];
+        $solr_config['password'] = empty($config['password']) ? '' : $config['password'];
+        $solr_config['path'] = empty($config['path']) ? '' : $config['path'];
+        $solr_config['timeout'] = empty($config['timeout']) ? 0 : $config['timeout'];
+        return $solr_config;
+    }
+    /**
+     * get memcache connection
+     * @return SolrClient
+     */
+    private function getSolr($solr_config) {
+        if (!extension_loaded('solr')) {
+            return null;
+        }
+        $resource_type = 'solr';
+        $resource_pool = ResourcePool::getInstance();
+        $resource_key = $resource_pool->getResourceKey($solr_config);
+        $solr = $resource_pool->getResource($resource_type, $resource_key);
+        if($solr) {
+            return $solr;
+        }
+        $solr_config = filter_array($solr_config, ['host', 'port', 'username', 'password', 'path'], true);
+        $solr = null;
         try {
-            $this->solr = new SolrClient($solr_config);
+            $solr = new SolrClient($solr_config);
         } catch (Exception $e) {
-            $this->solr = null;
             throw new SolrException(
                 'solr client error: ' . $e->getMessage(),
                 ExceptionCode::SOLR_CONNECTION_ERROR);
         }
-        $resource_pool->registerResource('solr', $resource_key, $this->solr);
-        return true;
+        $resource_pool->registerResource($resource_type, $resource_key, $solr);
+        return $solr;
     }
     /**
      * query by 'AND', the result would be only the first row
@@ -216,9 +239,9 @@ class SolrModel {
             $this->solr->addDocument($doc, true);
             $update_response = $this->solr->commit();
             $this->solr->optimize();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             __add_info('update to solr failed: ' . $e->getMessage(),
-                InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+                InfoCollector::TYPE_EXCEPTION, InfoCollector::LEVEL_DEBUG);
             return 0;
         }
         $update_response = $this->parseResponse($update_response);
@@ -236,9 +259,9 @@ class SolrModel {
         try {
             $this->solr->deleteByQuery($query);
             $update_response = $this->solr->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             __add_info('solr delete failed: ' . $e->getMessage(),
-                InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+                InfoCollector::TYPE_EXCEPTION, InfoCollector::LEVEL_DEBUG);
             return 0;
         }
         $update_response = $this->parseResponse($update_response);
@@ -256,9 +279,9 @@ class SolrModel {
         try {
             $this->solr->deleteByIds($id_list);
             $update_response = $this->solr->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             __add_info('solr delete failed: ' . $e->getMessage(),
-                InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+                InfoCollector::TYPE_EXCEPTION, InfoCollector::LEVEL_DEBUG);
             return 0;
         }
         $update_response = $this->parseResponse($update_response);
@@ -314,9 +337,9 @@ class SolrModel {
             InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
         try {
             $query_response = $this->solr->query($query);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             __add_info('query failed to solr: ' . $e->getMessage(),
-                InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+                InfoCollector::TYPE_EXCEPTION, InfoCollector::LEVEL_DEBUG);
             return array();
         }
         $query_response = $this->parseResponse($query_response);

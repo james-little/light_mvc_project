@@ -1,8 +1,7 @@
 <?php
 namespace socket\processor;
 
-use exception\SocketException,
-    socket\processor\helper\SocketProcessorHelper;
+use socket\processor\helper\SocketProcessorHelper;
 
 
 /**

@@ -11,33 +11,34 @@ namespace resource\cache\adapter;
 use resource\cache\adapter\CacheAdapterInterface,
     exception\CacheException,
     exception\ExceptionCode,
+    resource\ResourcePool,
     info\InfoCollector,
-    \Memcached;
+    Memcached;
 
 class AdapterMemcached implements CacheAdapterInterface {
 
     protected $_memcached;
-    private $default_ttl = 0;
-    private $poll_timeout = 3000;
-    private $connection_timeout = 5000;
-    private $retry_timeout = 5000;
-    private $hosts;
+    private $config;
 
 
     /**
      * get memcache connection
-     * @return \Memcache
+     * @return Memcached
      */
     public function getConnection() {
         if (!extension_loaded('memcached')) {
             return null;
         }
+        $resource_type = 'memcached';
+        $resource_pool = ResourcePool::getInstance();
+        $resource_key = $resource_pool->getResourceKey($this->config);
+        $memcached = $resource_pool->getResource($resource_type, $resource_key);
+        if($memcached) {
+            return $memcached;
+        }
         $memcached = new Memcached();
-        $memcached->setOption(Memcached::OPT_COMPRESSION, false);
-        $memcached->setOption(Memcached::OPT_NO_BLOCK, true);
-        $memcached->setOption(Memcached::OPT_SERIALIZER, Memcached::SERIALIZER_IGBINARY);
-        $memcached = $this->setConfigValue($memcached);
-        $memcached = $this->addServers($memcached, $this->hosts);
+        $memcached = $this->initialize($memcached);
+        $resource_pool->registerResource($resource_type, $resource_key, $memcached);
         return $memcached;
     }
     /**
@@ -45,7 +46,7 @@ class AdapterMemcached implements CacheAdapterInterface {
      * @throws CacheException
      */
     public function bindConnection($connection) {
-        if (!$connection instanceof \Memcached) {
+        if (!$connection instanceof Memcached) {
             throw new CacheException(
                 'connection type not match. needed: Memecached, given: '. get_class($connection),
                 ExceptionCode::CACHE_ACCESS_OBJ_ERROR);
@@ -58,34 +59,43 @@ class AdapterMemcached implements CacheAdapterInterface {
      * @throws CacheException
      */
     public function applyConfig($config) {
-        if (empty($config)) return;
-        $hosts_list = empty($config['hosts']) ? array() : $config['hosts'];
+        if (empty($config)) {
+            throw new CacheException('hosts config empty',
+                ExceptionCode::CACHE_ACCESS_OBJ_ERROR);
+        }
+        $hosts_list = empty($config['hosts']) ? [] : $config['hosts'];
         if (empty($hosts_list)) {
             throw new CacheException('hosts config empty',
                 ExceptionCode::CACHE_ACCESS_OBJ_ERROR);
         }
+        $memcached_config = [];
         foreach ($hosts_list as $hosts) {
             $host_array = array();
             $host_array[0] = $hosts['host'];
             $host_array[1] = $hosts['port'];
             $host_array[2] = $hosts['weight'];
-            $this->hosts[] = $host_array;
+            $memcached_config['hosts'][] = $host_array;
         }
         unset($hosts_list);
-        $this->default_ttl = empty($config['default_ttl']) ? -1 : $config['default_ttl'];
-        $this->retry_timeout = empty($config['retry_timeout']) ? 2000 : $config['retry_timeout'];
-        $this->connection_timeout = empty($config['connection_timeout']) ? 5000 : $config['connection_timeout'];
-        $this->poll_timeout = empty($config['poll_timeout']) ? 5000 : $config['poll_timeout'];
+        $memcached_config['default_ttl'] = empty($config['default_ttl']) ? -1 : $config['default_ttl'];
+        $memcached_config['retry_timeout'] = empty($config['retry_timeout']) ? 2000 : $config['retry_timeout'] * 1000;
+        $memcached_config['connection_timeout'] = empty($config['connection_timeout']) ? 5000 : $config['connection_timeout'] * 1000;
+        $memcached_config['poll_timeout'] = empty($config['poll_timeout']) ? 5000 : $config['poll_timeout'] * 1000;
+        $this->config = $memcached_config;
     }
     /**
      * set config value
      * @param Memcached $memcached
      * @return Memcached
      */
-    private function setConfigValue($memcached) {
-        $memcached->setOption(Memcached::OPT_CONNECT_TIMEOUT, $this->connection_timeout);
-        $memcached->setOption(Memcached::OPT_RETRY_TIMEOUT, $this->retry_timeout);
-        $memcached->setOption(Memcached::OPT_POLL_TIMEOUT, $this->poll_timeout);
+    private function initialize($memcached) {
+        $memcached->setOption(Memcached::OPT_COMPRESSION, false);
+        $memcached->setOption(Memcached::OPT_NO_BLOCK, true);
+        $memcached->setOption(Memcached::OPT_SERIALIZER, Memcached::SERIALIZER_IGBINARY);
+        $memcached = $this->addServers($memcached, $this->config['hosts']);
+        $memcached->setOption(Memcached::OPT_CONNECT_TIMEOUT, $this->config['connection_timeout']);
+        $memcached->setOption(Memcached::OPT_RETRY_TIMEOUT, $this->config['retry_timeout']);
+        $memcached->setOption(Memcached::OPT_POLL_TIMEOUT, $this->config['poll_timeout']);
         return $memcached;
     }
     /**
@@ -147,7 +157,7 @@ class AdapterMemcached implements CacheAdapterInterface {
         if (!$this->_memcached) return false;
         $val = convert_string($val);
         if ($expire_time < 0) {
-            $expire_time = $this->default_ttl;
+            $expire_time = $this->config['default_ttl'];
         }
         return $this->_memcached->add($key, $val, $expire_time);
     }
@@ -161,7 +171,7 @@ class AdapterMemcached implements CacheAdapterInterface {
     public function set($key, $val, $expire_time = -1) {
         if (!$this->_memcached) return false;
         if ($expire_time < 0) {
-            $expire_time = $this->default_ttl;
+            $expire_time = $this->config['default_ttl'];
         }
         $result = $this->_memcached->set($key, convert_string($val), $expire_time);
         if(!$result && $this->_memcached->getResultCode() == Memcached::RES_WRITE_FAILURE) {
@@ -182,7 +192,7 @@ class AdapterMemcached implements CacheAdapterInterface {
     public function replace($key, $val, $expire_time = -1) {
         if (!$this->_memcached) return false;
         if ($expire_time < 0) {
-            $expire_time = $this->default_ttl;
+            $expire_time = $this->config['default_ttl'];
         }
         $result = $this->_memcached->replace($key, convert_string($val), $expire_time);
         if(!$result && $this->_memcached->getResultCode() == Memcached::RES_NOTSTORED) {
@@ -235,7 +245,7 @@ class AdapterMemcached implements CacheAdapterInterface {
     public function touch($key, $expire_time = -1) {
         if (!$this->_memcached) return false;
         if ($expire_time < 0) {
-            $expire_time = $this->default_ttl;
+            $expire_time = $this->config['default_ttl'];
         }
         return $this->_memcached->touch($key, $expire_time);
     }

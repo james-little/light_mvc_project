@@ -1,10 +1,10 @@
 <?php
 namespace core;
 
-use exception\ModelException;
-use resource\cache\Cache;
-use core\Model,
-info\InfoCollector;
+use exception\ModelException,
+    resource\cache\Cache,
+    core\Model,
+    info\InfoCollector;
 
 /**
  * partition model (DB)
@@ -31,7 +31,7 @@ abstract class PartitionModel extends Model {
      */
     public function __construct() {
         parent::__construct();
-        $this->cache = Cache::getInstance(Cache::TYPE_MEMCACHED);
+        $this->cache = Cache::getInstance();
     }
 
     /**

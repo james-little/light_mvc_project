@@ -3,11 +3,12 @@ namespace view;
 
 require dirname(FRAMEWORK_ROOT_DIR) . DIRECTORY_SEPARATOR . 'raintpl/inc/rain.tpl.class.php';
 
-use info\InfoCollector,
-    \RainTPL,
-    view\ViewInterface,
-    exception\ExceptionCode,
-    exception\ViewException;
+use exception\ExceptionCode;
+use exception\ViewException;
+use info\InfoCollector;
+use String;
+use view\ViewInterface;
+use \RainTPL;
 
 /**
  * Rain View
@@ -22,7 +23,7 @@ class RainView extends RainTPL implements ViewInterface {
 
     private $cache_expire_time;
     private $is_cache_enabled;
-    protected $_output_encode = 'utf-8';
+    protected $_output_encode = String::ENCODE_UTF8;
 
     /**
      * initialization
@@ -37,36 +38,36 @@ class RainView extends RainTPL implements ViewInterface {
 
         $allowed_settings = array(
             'tpl_dir', 'cache', 'base_url', 'output_encode',
-            'tpl_ext', 'path_replace', 'black_list'
+            'tpl_ext', 'path_replace', 'black_list',
         );
         if (empty($config)) {
-            return ;
+            return;
         }
         foreach ($config as $key => $value) {
             if (empty($value) || !in_array_pro($key, $allowed_settings)) {
-                continue ;
+                continue;
             }
             switch ($key) {
-                case 'path_replace':
-                    self::configure($key, $value['enabled']);
-                    if($value['enabled']) {
-                        self::configure('path_replace_list', $value['list']);
-                    }
-                    break;
-                case 'tpl_ext':
-                    self::configure('tpl_ext', empty($value) ? 'tpl' : $value);
-                    break;
-                case 'cache':
-                    $this->is_cache_enabled = empty($value['enabled']) ? false : true;
-                    $this->cache_expire_time = empty($value['expire_time']) ? 3600 : $value['expire_time'];
-                    self::configure('cache_dir', empty($value['dir']) ? 'tmp/' : $value['dir']);
-                    break;
-                case 'output_encode':
-                    $this->_output_encode = strtolower($value);
-                    break;
-                default:
-                    self::configure($key, $value);
-                    break;
+            case 'path_replace':
+                self::configure($key, $value['enabled']);
+                if ($value['enabled']) {
+                    self::configure('path_replace_list', $value['list']);
+                }
+                break;
+            case 'tpl_ext':
+                self::configure('tpl_ext', empty($value) ? 'tpl' : $value);
+                break;
+            case 'cache':
+                $this->is_cache_enabled  = empty($value['enabled']) ? false : true;
+                $this->cache_expire_time = empty($value['expire_time']) ? 3600 : $value['expire_time'];
+                self::configure('cache_dir', empty($value['dir']) ? 'tmp/' : $value['dir']);
+                break;
+            case 'output_encode':
+                $this->_output_encode = $value;
+                break;
+            default:
+                self::configure($key, $value);
+                break;
             }
             // message
             __add_info('view initialized: ' . $key, InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
@@ -120,10 +121,9 @@ class RainView extends RainTPL implements ViewInterface {
             }
             $output = $this->draw($template_file, true);
         }
-        if ($this->_output_encode != 'utf-8') {
-            $output = mb_convert_encoding($output, $this->_output_encode, 'utf-8');
+        if ($this->_output_encode != String::ENCODE_UTF8) {
+            $output = String::convert2UTF8($output, String::ENCODE_UTF8);
         }
         return $output;
-//         send_http_response('html', $output);
     }
 }
