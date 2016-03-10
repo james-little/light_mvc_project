@@ -1,7 +1,7 @@
 # Framework (Web)
 =====================
 Framework for web server. A pure MVC(Model-View-Controller) build framework with
-module support. 
+module support.
 
 ## Environment
 - linux is recommanded
@@ -9,16 +9,16 @@ module support.
 
 ## Features
 ```
-- MVC
-- multiple database support(Mysql, postgreSQL)
-- configurable database sharding
-- master-slave support
-- 1 master with N slaves load banlance
-- multiple cache support(memcached, redis)
-- search engine support(solr)
-- multiple language
-- multiple output(html, json)
-- maintenance time setable
+- MVP
+- Multiple database support(Mysql, postgreSQL)
+- Configurable database sharding(Partition Support)
+- Master-slave support
+- 1 master with N slaves framework level load banlance
+- Multiple cache support(memcached, redis)
+- Search engine support(solr)
+- Multiple view support(html, json)
+- Maintenance mode
+- Simple job queue
 ```
 
 ## Need PHP Modules
@@ -57,11 +57,11 @@ directory structure
 |   |-- plugins      <- customize plugins
 |   |-- script       <- batch scripts
 |   |-- sql          <- sql scripts
-|   |-- view         <- view folder 
+|   |-- view         <- view folder
 |
-|-- Crawler.php      <- main class
+|-- Crawler.php      <- main Application class
 |-- bootstrap.php    <- php settings or other
-|-- public           <- open for public
+|-- public           <- open for public(Document Root)
     |-- index.php
     |-- img          <- images files
     |-- css          <-- css files
