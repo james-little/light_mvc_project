@@ -1,11 +1,19 @@
 <?php
-namespace queue;
-
-use exception\ExceptionCode,
-    exception\QueueException,
-    queue\adapter\QueueAdapterInterface;
-
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Queue(singletone).
  * =======================================================
  * Main queue logic.
@@ -43,7 +51,15 @@ use exception\ExceptionCode,
  *
  * @version 1.0
  **/
-class Queue {
+namespace lightmvc\queue;
+
+use lightmvc\ClassLoader;
+use lightmvc\exception\ExceptionCode;
+use lightmvc\exception\QueueException;
+use lightmvc\queue\adapter\QueueAdapterInterface;
+
+class Queue
+{
 
     protected static $instance;
     protected $_adapter;
@@ -52,8 +68,11 @@ class Queue {
      * __construct
      * @param QueueAdapterInterface $adapter
      */
-    protected function __construct(QueueAdapterInterface $adapter = null) {
-        if ($adapter) $this->_adapter = $adapter;
+    protected function __construct(QueueAdapterInterface $adapter = null)
+    {
+        if ($adapter) {
+            $this->_adapter = $adapter;
+        }
     }
 
     /**
@@ -61,33 +80,43 @@ class Queue {
      * @param array $config
      *     . adapter         : string. adapter class name
      */
-    public function applyConfig($config) {
-        if (empty($config)) return ;
-        if ($this->_adapter) return ;
+    public function applyConfig($config)
+    {
+        if (empty($config)) {
+            return;
+        }
+
+        if ($this->_adapter) {
+            return;
+        }
+
         $adapter_name = $config['adapter'];
         if (!$adapter_name) {
             throw new QueueException('no adapter was set in queue', ExceptionCode::QUEUE_CONFIG_ERROR);
         }
-        $this->_adapter = \ClassLoader::loadClass($adapter_name);
+        $this->_adapter = ClassLoader::loadClass($adapter_name);
         $this->_adapter->applyConfig($config);
     }
     /**
      * adapter setter
      */
-    public function setAdapter(QueueAdapterInterface $adapter) {
+    public function setAdapter(QueueAdapterInterface $adapter)
+    {
         $this->_adapter = $adapter;
     }
     /**
      * adapter getter
      * @return QueueAdapterInterface
      */
-    public function getAdapter() {
+    public function getAdapter()
+    {
         return $this->_adapter;
     }
     /**
      * singletone
      */
-    static public function getInstance(QueueAdapterInterface $adapter = null) {
+    public static function getInstance(QueueAdapterInterface $adapter = null)
+    {
         if (self::$instance !== null) {
             return self::$instance;
         }
@@ -104,12 +133,12 @@ class Queue {
      * @param bool $is_by_post
      * @return int queue_id
      */
-    public function add($user_data, $queue_data, $is_by_post = false) {
-
+    public function add($user_data, $queue_data, $is_by_post = false)
+    {
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
-        $queue_data = array_merge($queue_data, $user_data);
+        $queue_data                = array_merge($queue_data, $user_data);
         $queue_data['http_method'] = $is_by_post ? 2 : 1;
         return $this->_adapter->add($queue_data);
     }
@@ -118,8 +147,12 @@ class Queue {
      * @param $queue_id array
      * @return bool
      */
-    public function delete($queue_id) {
-        if (!$queue_id) return;
+    public function delete($queue_id)
+    {
+        if (!$queue_id) {
+            return;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -132,7 +165,8 @@ class Queue {
      * @throws QueueException
      * @return array
      */
-    public function get($process_num = 1, $process_id = 0) {
+    public function get($process_num = 1, $process_id = 0)
+    {
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -144,8 +178,12 @@ class Queue {
      * @throws QueueException
      * @return array
      */
-    public function getQueueDataByUserId($user_id) {
-        if (!$user_id) return false;
+    public function getQueueDataByUserId($user_id)
+    {
+        if (!$user_id) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -157,8 +195,12 @@ class Queue {
      * @throws QueueException
      * @return array
      */
-    public function getByQueueId($queue_id, $is_by_force = false) {
-        if (!$queue_id) return false;
+    public function getByQueueId($queue_id, $is_by_force = false)
+    {
+        if (!$queue_id) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -170,8 +212,12 @@ class Queue {
      * @throws QueueException
      * @return bool
      */
-    public function setQueueSuccess($queue_id_list) {
-        if (!count($queue_id_list)) return false;
+    public function setQueueSuccess($queue_id_list)
+    {
+        if (!count($queue_id_list)) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -184,8 +230,12 @@ class Queue {
      * @throws QueueException
      * @return bool true if unprocessed
      */
-    public function confirmUnprocess($queue_id) {
-        if (!$queue_id) return false;
+    public function confirmUnprocess($queue_id)
+    {
+        if (!$queue_id) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -198,8 +248,12 @@ class Queue {
      * @throws QueueException
      * @return bool true if updated
      */
-    public function updateErrorCode($queue_id, $error_code, $http_code) {
-        if (!$queue_id) return false;
+    public function updateErrorCode($queue_id, $error_code, $http_code)
+    {
+        if (!$queue_id) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -212,8 +266,12 @@ class Queue {
      * @throws QueueException
      * @return bool true if updated
      */
-    public function update($queue_id, $queue_data) {
-        if (!$queue_id) return false;
+    public function update($queue_id, $queue_data)
+    {
+        if (!$queue_id) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -224,8 +282,12 @@ class Queue {
      * @param int $queue_id
      * @throws Exception
      */
-    public function resetLock($queue_id = null) {
-        if ($queue_id && !is_numeric($queue_id)) return false;
+    public function resetLock($queue_id = null)
+    {
+        if ($queue_id && !is_numeric($queue_id)) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }
@@ -236,8 +298,12 @@ class Queue {
      * @param int $queue_id
      * @throws Exception
      */
-    public function ignore($queue_id) {
-        if (!$queue_id) return false;
+    public function ignore($queue_id)
+    {
+        if (!$queue_id) {
+            return false;
+        }
+
         if (!$this->_adapter) {
             throw new QueueException('adapter was not set', ExceptionCode::QUEUE_ADAPTER_NOT_SET);
         }

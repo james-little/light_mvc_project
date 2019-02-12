@@ -1,13 +1,30 @@
 <?php
-namespace core\http;
+/**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-use Application;
-use core\http\Request;
-use Datatype;
-use String;
-use Useragent;
+namespace lightmvc\core\http;
 
-class Parameter {
+use lightmvc\Application;
+use lightmvc\core\http\Request;
+use lightmvc\Datatype;
+use lightmvc\Useragent;
+use lightmvc\Encoding;
+
+class Parameter
+{
 
     protected $_params;
     protected static $instance;
@@ -16,7 +33,8 @@ class Parameter {
     /**
      * __constructor
      */
-    protected function __construct() {
+    protected function __construct()
+    {
         fix_server_vars();
         $this->_params          = array_merge($_GET, $_POST);
         $this->converted_column = [];
@@ -25,7 +43,8 @@ class Parameter {
      * get instance
      * @return \core\http\Parameter
      */
-    public static function getInstance() {
+    public static function getInstance()
+    {
         if (self::$instance !== null) {
             return self::$instance;
         }
@@ -37,21 +56,22 @@ class Parameter {
      * @param string $key
      * @param mixed $default
      */
-    public function get($key, $default = null, $data_type = Datatype::DATA_TYPE_STRING, $method = null) {
+    public function get($key, $default = null, $data_type = Datatype::DATA_TYPE_STRING, $method = null)
+    {
         if ($method) {
             switch ($method) {
-            case Request::METHOD_GET:
-                if (!array_key_exists($key, $_GET)) {
-                    return $default;
-                }
-                return $this->convertData($_GET[$key], $data_type);
-            case Request::METHOD_POST:
-                if (!array_key_exists($key, $_POST)) {
-                    return $default;
-                }
-                return $this->convertData($_POST[$key], $data_type);
-            default:
-                return null;
+                case Request::METHOD_GET:
+                    if (!array_key_exists($key, $_GET)) {
+                        return $default;
+                    }
+                    return $this->convertData($_GET[$key], $data_type);
+                case Request::METHOD_POST:
+                    if (!array_key_exists($key, $_POST)) {
+                        return $default;
+                    }
+                    return $this->convertData($_POST[$key], $data_type);
+                default:
+                    return null;
             }
         }
         if (!array_key_exists($key, $this->_params)) {
@@ -69,14 +89,16 @@ class Parameter {
      * @param string $key
      * @param mixed $value
      */
-    public function set($key, $value) {
+    public function set($key, $value)
+    {
         $this->_params[$key] = $value;
     }
     /**
      * get all values from request
      * @return multitype:
      */
-    public function getAll() {
+    public function getAll()
+    {
         return $this->_params;
     }
     /**
@@ -84,7 +106,8 @@ class Parameter {
      * @param stirng $key
      * @return boolean
      */
-    public function emojiExists($key) {
+    public function emojiExists($key)
+    {
         if (!array_key_exists($key, $this->_params)) {
             return false;
         }
@@ -98,8 +121,9 @@ class Parameter {
     /**
      * convert data
      */
-    protected function convertData($val, $data_type) {
-        $val = String::convert2UTF8($val, Application::getInputEncoding());
+    protected function convertData($val, $data_type)
+    {
+        $val = Encoding::convert2UTF8($val, Application::getInputEncoding());
         $val = Datatype::convertDatatype($val, $data_type);
         return $val;
     }
@@ -109,7 +133,8 @@ class Parameter {
      * @param mixed $emoji_instance
      * @return mixed
      */
-    protected function convertEmoji($values, $emoji_instance = null) {
+    protected function convertEmoji($values, $emoji_instance = null)
+    {
 
         if (!$emoji_instance) {
             require 'HTML/Emoji.php';

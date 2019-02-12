@@ -1,7 +1,21 @@
 <?php
-namespace context;
+namespace lightmvc\context;
 
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Context
  * =======================================================
  * Application context. Used for storing temporary application data
@@ -11,7 +25,8 @@ namespace context;
  * @version 1.0
  **/
 
-abstract class Context {
+abstract class Context
+{
 
     protected static $_instance;
     private $context;
@@ -19,14 +34,16 @@ abstract class Context {
     /**
      * constructor
      */
-    protected function __construct() {
+    protected function __construct()
+    {
         $this->context = [];
     }
     /**
      * singleton
      * @return Context
      */
-    public static function getInstance() {
+    public static function getInstance()
+    {
         if (static::$_instance !== null) {
             return static::$_instance;
         }
@@ -51,8 +68,8 @@ abstract class Context {
      * @param mixed $content_value
      * @return null if not exist
      */
-    public function getData($content_key, $params = null) {
-
+    public function getData($content_key, $params = null)
+    {
         if (is_string($content_key)) {
             // get as key => value
             return array_key_exists($content_key, $this->context) ? $this->context[$content_key] : null;
@@ -68,8 +85,8 @@ abstract class Context {
      * @param bool $force_update true: force get data from object
      * @return mixed
      */
-    protected function _getData($callable, $params, $force_update = false) {
-
+    protected function _getData($callable, $params, $force_update = false)
+    {
         if (!is_callable($callable, false)) {
             return null;
         }
@@ -87,11 +104,11 @@ abstract class Context {
      * @param mixed $additional_data
      * @return multitype:
      */
-    protected function _setData($callable, $params) {
-
+    protected function _setData($callable, $params)
+    {
         $content_data = $this->getData($callable, $params, true);
         if (empty($content_data)) {
-            $content_data = array();
+            $content_data = [];
         }
         $content_key                 = $this->getKey($callable, $params);
         $this->context[$content_key] = $content_data;
@@ -109,7 +126,8 @@ abstract class Context {
      * @param mixed $content_value
      * @return boolean
      */
-    public function setData($content_key, $content_value) {
+    public function setData($content_key, $content_value)
+    {
         if (is_string($content_key)) {
             // use as key => value type
             $this->context[$content_key] = $content_value;
@@ -130,7 +148,8 @@ abstract class Context {
      * @param mixed $content_value
      * @return void
      */
-    public function clearData($content_key, $content_value = null) {
+    public function clearData($content_key, $content_value = null)
+    {
         if (is_string($content_key)) {
             // use as key => value type
             unset($this->context[$content_key]);
@@ -148,7 +167,8 @@ abstract class Context {
      * clear all data from application context
      * @return void
      */
-    public function clearAllData() {
+    public function clearAllData()
+    {
         $this->context = [];
     }
     /**
@@ -157,7 +177,8 @@ abstract class Context {
      * @param mixed $params
      * @return string
      */
-    protected function getKey($callable, $params) {
+    protected function getKey($callable, $params)
+    {
         if (is_string($callable)) {
             $name = 'global_method';
         } else {

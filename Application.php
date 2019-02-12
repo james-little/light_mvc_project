@@ -1,14 +1,20 @@
 <?php
-use auth\AuthLogicInterface;
-use context\RuntimeContext;
-use core\Dispatcher;
-use core\http\Request;
-use core\http\Response;
-use exception\AppException;
-use exception\ExceptionCode;
-use info\InfoCollector;
 
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Application
  * =======================================================
  * Implementation of application
@@ -19,15 +25,18 @@ use info\InfoCollector;
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-abstract class Application {
+namespace lightmvc;
 
-    protected static $_instance;
+use lightmvc\exception\AppException;
+use lightmvc\exception\ExceptionCode;
+
+abstract class Application
+{
+
     protected static $_config;
-    protected $_auth_logic;
     protected static $input_encoding;
     protected static $output_encoding;
-    private static $dispatcher;
-    protected $_error_handler = '/common/AppError/handle';
+    protected $_error_handler;
 
     const LANG_EN = 1;
     const LANG_JP = 2;
@@ -36,10 +45,10 @@ abstract class Application {
     /**
      * constructor
      */
-    protected function __construct($cli_manual_envi = null) {
-
-        self::$_config = [];
-        self::init($cli_manual_envi);
+    protected function __construct()
+    {
+        static::$_config = [];
+        static::init();
         // shutdown handler
         register_shutdown_function([$this, 'beforeShutdown']);
     }
@@ -47,8 +56,8 @@ abstract class Application {
      * init
      * @throws AppException
      */
-    public static function init($cli_manual_envi = null) {
-
+    public static function init()
+    {
         if (!defined('APPLICATION_DIR')) {
             throw new AppException('APPLICATION_DIR not defined!', ExceptionCode::APP_DIR_NOT_DEFINED);
         }
@@ -59,7 +68,7 @@ abstract class Application {
         // bootstrap
         include $bootstrap;
         // include framkework functions
-        self::includeFrameworkFunctions();
+        static::includeFrameworkFunctions();
         if (!class_exists('AppRuntimeContext')) {
             // AppRuntimeContext is must
             throw new AppException(
@@ -73,36 +82,33 @@ abstract class Application {
         $application_config = APPLICATION_CONFIG_DIR . 'common/application.php';
         if (!is_file($application_config)) {
             throw new AppException(
-                'application config not found in ' . $application_config,
+                sprintf('application config not found in: %s', $application_config),
                 ExceptionCode::APP_CONFIG_FILE_NOT_EXIST
             );
         }
         $application_config = require $application_config;
-        self::setEncodingConfig($application_config['encode']);
-        // fix encoding setting by user agent
-        Useragent::getCarrier();
+        static::setEncodingConfig($application_config['encode']);
         // timezone
         date_default_timezone_set($application_config['time_zone']);
         // put config settings intp application context
-        self::setConfig('application', $application_config);
+        static::setConfig('application', $application_config);
+        // debug config
+        static::setDebugInfo();
         // crypt key
-        define('APPLICATION_CRYPT_KEY', self::getConfigByKey('application', 'crypt_key', 'key'));
-        define('APPLICATION_CRYPT_IV', self::getConfigByKey('application', 'crypt_key', 'iv'));
-        // crypt key for javascript
-        self::setJScriptCryptKey();
-        // set session config
-        Session::applyConfig(Application::getConfigByKey('application', 'session'));
+        define('APPLICATION_CRYPT_KEY', static::getConfigByKey('application', 'crypt_key', 'key'));
+        define('APPLICATION_CRYPT_IV', static::getConfigByKey('application', 'crypt_key', 'iv'));
         // set project log on/off
-        define('APPLICATION_KPI_LOG', Application::getConfigByKey('application', 'project_log', 'enabled'));
-        define('APPLICATION_COMPRESS_ENABLED', Application::getConfigByKey('application', 'enable_compressing'));
+        define('APPLICATION_KPI_LOG', static::getConfigByKey('application', 'project_log', 'enabled'));
+        define('APPLICATION_COMPRESS_ENABLED', static::getConfigByKey('application', 'enable_compressing'));
     }
+
     /**
      * include framework functions
      */
-    public static function includeFrameworkFunctions() {
-
+    public static function includeFrameworkFunctions()
+    {
         $expanded_functions_dir = __DIR__ . DIRECTORY_SEPARATOR . 'functions';
-        $objects                = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(realpath($expanded_functions_dir)));
+        $objects = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(realpath($expanded_functions_dir)));
         foreach ($objects as $entry => $object) {
             if (substr($entry, -4) != '.php') {
                 continue;
@@ -111,36 +117,36 @@ abstract class Application {
             include $entry;
         }
     }
+
     /**
      * set application locale
      */
-    public static function setApplicationLocale($lang = null) {
-
+    public static function setApplicationLocale($lang = null)
+    {
         if ($lang && !in_array($lang, [
-            Application::LANG_EN, Application::LANG_JP, Application::LANG_CN,
+            static::LANG_EN, static::LANG_JP, static::LANG_CN,
         ])) {
             return;
         }
         if (!$lang) {
-            $locale = self::getConfigByKey('application', 'locale');
-            $lang   = self::getLangByLocale($locale);
+            $locale = static::getConfigByKey('application', 'locale');
+            $lang = static::getLangByLocale($locale);
         }
         if (!defined('APPLICATION_LANG')) {
             define('APPLICATION_LANG', $lang);
-            self::setLocaleDomain($lang, APPLICATION_DIR . 'locale');
+            static::setLocaleDomain($lang, APPLICATION_DIR . 'locale');
         }
-        // set language info to cookie
-        set_cookie_pro('lang', $lang, null, 3600 * 24 * 30);
     }
     /**
      * get language list
      * @return array
      */
-    public static function getLangList() {
+    public static function getLangList()
+    {
         return [
-            self::LANG_EN => __message("English"),
-            self::LANG_JP => __message("Japanese"),
-            self::LANG_CN => __message("Chinese"),
+            static::LANG_EN => __message("English"),
+            static::LANG_JP => __message("Japanese"),
+            static::LANG_CN => __message("Chinese"),
         ];
     }
     /**
@@ -148,12 +154,13 @@ abstract class Application {
      * @param  int $lang
      * @return string
      */
-    public static function getLocaleByLang($lang) {
+    public static function getLocaleByLang($lang)
+    {
         switch ($lang) {
-        case self::LANG_JP:
-            return 'ja-JP';
-        case self::LANG_CN:
-            return 'zh-CN';
+            case static::LANG_JP:
+                return 'ja-JP';
+            case static::LANG_CN:
+                return 'zh-CN';
         }
         return 'en-US';
     }
@@ -162,72 +169,53 @@ abstract class Application {
      * @param  string $locale
      * @return int
      */
-    public static function getLangByLocale($locale) {
+    public static function getLangByLocale($locale)
+    {
         switch ($locale) {
-        case 'ja-JP':
-            return self::LANG_JP;
-        case 'zh-CN':
-            return self::LANG_CN;
+            case 'ja-JP':
+                return static::LANG_JP;
+            case 'zh-CN':
+                return static::LANG_CN;
         }
-        return self::LANG_EN;
+        return static::LANG_EN;
     }
     /**
      * set locale
      * @param $lang
      * @return void
      */
-    public static function setLocaleDomain($lang, $dir, $module = null) {
-
-        if ($lang == self::LANG_EN) {
+    public static function setLocaleDomain($lang, $dir, $module = null)
+    {
+        if ($lang == static::LANG_EN) {
             return;
         }
-        $locale = str_replace('-', '_', self::getLocaleByLang($lang));
+        $locale = str_replace('-', '_', static::getLocaleByLang($lang));
         putenv('LANG=' . $locale);
         setlocale(LC_ALL, $locale);
-        $domain = self::getProjectName();
+        $domain = static::getProjectName();
         if ($module) {
             $domain .= "_{$module}";
         }
         bind_textdomain_codeset($domain, 'UTF-8');
         bindtextdomain($domain, $dir);
         textdomain($domain);
-        __add_info(sprintf('locale set to %s. domain: %s, dir: %s', $locale, $domain, $dir),
-            InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
-    }
-    /**
-     * read maintenance config
-     */
-    protected function getMaintenanceConfig() {
-
-        $config = APPLICATION_CONFIG_DIR;
-        $envi   = RuntimeContext::getInstance()->getAppEnvi();
-        switch ($envi) {
-        case RuntimeContext::ENVI_PRODUCTION:
-            $config .= 'production/maintenance.php';
-            break;
-        case RuntimeContext::ENVI_STAGING:
-            $config .= 'staging/maintenance.php';
-            break;
-        case RuntimeContext::ENVI_DEVELOP:
-            $config .= 'develop/maintenance.php';
-            break;
-        }
-        if (!is_file($config)) {
-            return [];
-        }
-        $config = include $config;
-        return $config;
+        __add_info(
+            sprintf('locale set to %s. domain: %s, dir: %s', $locale, $domain, $dir),
+            InfoCollector::TYPE_LOGIC,
+            InfoCollector::LEVEL_DEBUG
+        );
     }
     /**
      * singleton
      * @return Application
      */
-    public static function getInstance($cli_manual_envi = null) {
+    public static function getInstance()
+    {
 
         if (static::$_instance !== null) {
             return static::$_instance;
         }
-        static::$_instance = new static($cli_manual_envi);
+        static::$_instance = new static();
         return static::$_instance;
     }
     /**
@@ -235,7 +223,8 @@ abstract class Application {
      * @param string $key
      * @param array $config
      */
-    public static function setConfig($category, $config) {
+    public static function setConfig($category, $config)
+    {
 
         if (empty($category)) {
             return;
@@ -246,7 +235,8 @@ abstract class Application {
      * remove application config
      * @param string $key
      */
-    public static function removeConfig($category, $key = null) {
+    public static function removeConfig($category, $key = null)
+    {
 
         if (!array_key_exists($category, static::$_config)) {
             return;
@@ -260,14 +250,15 @@ abstract class Application {
     /**
      * get config
      */
-    public static function getConfig() {
+    public static function getConfig()
+    {
         return static::$_config;
     }
     /**
      * get config
      */
-    public static function getConfigByKey($category, $key = null, $sec_key = null) {
-
+    public static function getConfigByKey($category, $key = null, $sec_key = null)
+    {
         if (!array_key_exists($category, static::$_config)) {
             return null;
         }
@@ -282,49 +273,40 @@ abstract class Application {
     /**
      * get project name
      */
-    public static function getProjectName() {
-        return self::getConfigByKey('application', 'project_name');
+    public static function getProjectName()
+    {
+        return static::getConfigByKey('application', 'project_name');
     }
     /**
      * get project log base dir
      */
-    public static function getLogBaseDir() {
-
-        $log_base_dir = self::getConfigByKey('application', 'log_base_dir');
-        $log_base_dir = str_replace('%project_name%', self::getProjectName(), $log_base_dir);
+    public static function getLogBaseDir()
+    {
+        $log_base_dir = static::getConfigByKey('application', 'log_base_dir');
+        $log_base_dir = str_replace('%project_name%', static::getProjectName(), $log_base_dir);
         return $log_base_dir;
     }
     /**
      * get input encoding
      */
-    public static function getInputEncoding() {
+    public static function getInputEncoding()
+    {
         return static::$input_encoding;
     }
     /**
      * get output encoding
      */
-    public static function getOutputEncoding() {
+    public static function getOutputEncoding()
+    {
         return static::$output_encoding;
-    }
-    /**
-     * set auth logic
-     * @param AuthLogicInterface $auth_logic
-     * @throws AppException
-     */
-    public function setAuth(AuthLogicInterface $auth_logic) {
-
-        if (empty($auth_logic)) {
-            throw new AppException('auth logic should not be empty', ExceptionCode::APP_AUTH_CALLBACK_AUTH);
-        }
-        $this->_auth_logic = $auth_logic;
     }
     /**
      * set encoding config
      * @param array $config
      */
-    public static function setEncodingConfig($config) {
-
-        $default_encode = 'UTF-8';
+    public static function setEncodingConfig($config)
+    {
+        $default_encode = Encoding::convertEncodingName(Encoding::ENCODE_UTF8);
         if (isset($config['default'])) {
             $default_encode = $config['default'];
         }
@@ -335,142 +317,162 @@ abstract class Application {
         if (isset($config['input'])) {
             $input_encode = $config['input'];
         }
-        self::$input_encoding  = $input_encode;
-        self::$output_encoding = $output_encode;
+        static::$input_encoding = $input_encode;
+        static::$output_encoding = $output_encode;
         // encoding settings
-        mb_internal_encoding('UTF-8');
-        mb_regex_encoding('UTF-8');
-        mb_http_output(String::convertEncodingName($output_encode));
+        mb_internal_encoding(Encoding::convertEncodingName(Encoding::ENCODE_UTF8));
+        mb_regex_encoding(Encoding::convertEncodingName(Encoding::ENCODE_UTF8));
     }
     /**
-     * run application
-     * @throws AppException
+     * read maintenance config
      */
-    public function run() {
-
-        if (!defined('APPLICATION_ENVI')) {
-            $this->handleException(new AppException(
-                'APPLICATION_ENVI not defined',
-                ExceptionCode::APP_ENVI_NOT_DEFINED
-            ));
-            return;
+    protected function getMaintenanceConfig()
+    {
+        $config_path = $this->getMaintenanceConfigPath();
+        if (!$config_path) {
+            return null;
         }
-        if (!defined('APPLICATION_CONFIG_DIR')) {
-            $this->handleException(new AppException(
-                'APPLICATION_CONFIG_DIR not defined',
-                ExceptionCode::APP_CONFIG_DIR_NOT_DEFINED
-            ));
-            return;
-        }
-        $maintenance_info = [];
-        if ($this->isInMaintenance($maintenance_info)) {
-            $this->handleException(new AppException(
-                "application is in maintenance:[{$maintenance_info['start_time']},{$maintenance_info['end_time']}]",
-                ExceptionCode::APP_IN_MAINTENANCE
-            ));
-            return;
-        }
-        $maintenance_info = null;
-        $current_path     = Request::getCurrentUrlPath();
-        try {
-            if ($this->_auth_logic) {
-                $auth = new Auth($this->_auth_logic, array('url_path' => $current_path));
-                $auth->auth();
-            }
-            // loccalization
-            self::setApplicationLocale();
-            $dispatcher        = $this->getDispatcher();
-            $response_contents = $dispatcher->dispatch($current_path);
-        } catch (Exception $e) {
-            $this->handleException($e);
-            return;
-        }
-        $response = Response::getInstance();
-        $response->setContents($response_contents);
-        $response->send();
-    }
-    /**
-     * handle exception (throw exception when error code is not defined)
-     */
-    protected function handleException($e) {
-
-        RuntimeContext::getInstance()->setData('render_error_exception', $e);
-        $dispatcher        = $this->getDispatcher();
-        $response_contents = $dispatcher->dispatch($this->_error_handler);
-        $response          = Response::getInstance();
-        $response->setContents($response_contents);
-        $response->send();
-    }
-    /**
-     * get dispatcher
-     * @return Dispatcher
-     */
-    private function getDispatcher() {
-
-        if (self::$dispatcher !== null) {
-            return self::$dispatcher;
-        }
-        self::$dispatcher = new Dispatcher();
-        return self::$dispatcher;
+        $config = include $config_path;
+        return $config;
     }
     /**
      * is in maintenance
      * @return bool
      */
-    public function isInMaintenance(&$maintenance_info = null) {
-
-        $config = $this->getMaintenanceConfig();
-        if (empty($config)) {
+    public function isInMaintenance(&$maintenance_info = null)
+    {
+        $maintenance_config = $this->getMaintenanceConfig();
+        if (empty($maintenance_config)) {
             if ($maintenance_info) {
                 $maintenance_info = [
                     'start_time' => 0,
-                    'end_time'   => 0,
+                    'end_time' => 0,
                 ];
             }
             return false;
         }
-        if (empty($config['start_time']) || empty($config['end_time'])) {
+        $start_time = null;
+        $end_time = null;
+        if (empty($maintenance_config['start_time'])) {
             if ($maintenance_info) {
-                $maintenance_info = [
-                    'start_time' => empty($config['start_time']) ? '' : strtotime($config['start_time']),
-                    'end_time'   => empty($config['end_time']) ? '' : strtotime($config['end_time']),
-                ];
+                $maintenance_info['start_time'] = '';
             }
-            return false;
+        } else {
+            $start_time = strtotime($maintenance_config['start_time']);
+            if ($maintenance_info) {
+                $maintenance_info['start_time'] = $maintenance_config['start_time'];
+            }
+        }
+        if (!empty($maintenance_config['end_time'])) {
+            if ($maintenance_info) {
+                $maintenance_info['end_time'] = '';
+            }
+        } else {
+            $end_time = strtotime($maintenance_config['end_time']);
+            if ($maintenance_info) {
+                $maintenance_info['end_time'] = $maintenance_config['end_time'];
+            }
         }
         $now_time = time();
-        if ($now_time >= strtotime($config['start_time']) && $now_time <= strtotime($config['end_time'])) {
-            if ($maintenance_info) {
-                $maintenance_info = [
-                    'start_time' => strtotime($config['start_time']),
-                    'end_time'   => strtotime($config['end_time']),
-                ];
+        if (!$start_time) {
+            if (!$end_time) {
+                if ($now_time >= $start_time && $now_time < $end_time) {
+                    return true;
+                }
+                return false;
             }
-            return true;
+            if ($now_time >= $start_time) {
+                return true;
+            }
+            return false;
         }
-        if ($maintenance_info) {
-            $maintenance_info = [
-                'start_time' => strtotime($config['start_time']),
-                'end_time'   => strtotime($config['end_time']),
-            ];
+        if (!$end_time) {
+            if ($now_time < $end_time) {
+                return true;
+            }
+            return false;
         }
         return false;
     }
-    /**
-     * set crypted key for js decrypt
-     */
-    private static function setJScriptCryptKey() {
 
-        if (defined('APPLICATION_JS_CRYPT_KEY')) {
-            return;
+    /**
+     * set debug info collector for production/staging environment
+     */
+    private static function setDebugInfo()
+    {
+        $debug_config = static::getDebugConfig();
+        if (!is_file($debug_config)) {
+            throw new AppException(
+                sprintf('debug config file not exist: %s', $debug_config),
+                ExceptionCode::APP_DEBUG_CONFIG_FILE_NOT_EXIST
+            );
         }
-        $js_crypt_key = APPLICATION_CRYPT_KEY;
-        $len          = strlen($js_crypt_key);
-        $js_crypt_key = substr($js_crypt_key, $len / 2) . substr($js_crypt_key, 0, $len / 2);
-        define('APPLICATION_JS_CRYPT_KEY', $js_crypt_key);
+        $debug_config = require $debug_config;
+        if (!array_key_exists('enable', $debug_config)) {
+            $debug_config['enable'] = false;
+        }
+        static::setConfig('debug', $debug_config);
+
+        $debug_enabled = static::getIsDebugEnabled();
+        // disable information collection when in production mode by default
+        $is_enable_ic = static::getIsInfoCollectEnabled();
+        // enable info collect
+        defined('ENABLE_INFO_COLLECT') ? null : define('ENABLE_INFO_COLLECT', $is_enable_ic);
+        // debug mode
+        defined('APPLICATION_IS_DEBUG') ? null : define('APPLICATION_IS_DEBUG', $is_debug);
+    }
+    /**
+     * get is debug enabled
+     * @return bool
+     */
+    private static function getIsDebugEnabled()
+    {
+        return static::getConfigByKey('debug', 'enable');
+    }
+    /**
+     * get is information collection to collect all information
+     * @return bool
+     */
+    private static function getIsInfoCollectEnabled()
+    {
+        return RuntimeContext::$APP_ENVI == RuntimeContext::ENVI_PRODUCTION ? false : true;
     }
     /**
      * before application shutdown
      */
-    abstract public function beforeShutdown();
+    public function beforeShutdown()
+    {
+        global $GLOBALS;
+        $info_collector = empty($GLOBALS['information_collector']) ? null : $GLOBALS['information_collector'];
+        if ($info_collector) {
+            // render collected information
+            $info_render = new InfoRender($info_collector);
+            $info_render->addAdapter(ClassLoader::loadClass('\info\adapter\InfoRenderAdapterException'));
+            // add debug adapter when in develop enviornment
+            if (defined('APPLICATION_IS_DEBUG') && APPLICATION_IS_DEBUG) {
+                $info_render->addAdapter(ClassLoader::loadClass('\info\adapter\InfoRenderAdapterDebug'));
+            }
+            $info_render->render();
+        }
+    }
+    /**
+     * get path of the debug
+     * @return string
+     */
+    abstract protected static function getDebugConfig();
+    /**
+     * set auth logic
+     * @param AuthLogicInterface $auth_logic
+     * @throws AppException
+     */
+    abstract public function setAuth(AuthLogicInterface $auth_logic);
+    /**
+     * run application
+     * @throws AppException
+     */
+    abstract public function run();
+    /**
+     * maintenance config
+     */
+    abstract protected function getMaintenanceConfigPath();
 }

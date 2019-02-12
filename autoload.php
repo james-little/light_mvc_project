@@ -22,5 +22,5 @@ if (FRAMEWORK_SPL_AUTOLOAD && set_include_path(get_include_path() . PATH_SEPARAT
     $autoloader = new ClassLoader();
     ClassLoader::setUseIncludePath(true);
     ClassLoader::addScanPath(APPLICATION_DIR . 'protected' . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR);
-    ClassLoader::addScanPath(FRAMEWORK_ROOT_DIR);
 }
+defined('TMP_DIR') ? null : define('TMP_DIR', sys_get_temp_dir());

@@ -1,9 +1,19 @@
 <?php
-namespace socket;
-
-use exception\SocketException;
-
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Socket client.
  * ==========================================================
  * You can build a socket client with this class by specifying the socket server
@@ -38,9 +48,12 @@ use exception\SocketException;
  * @package socket
  * @version 1.0
  **/
+namespace lightmvc\socket;
 
+use lightmvc\exception\SocketException;
 
-class SocketClient {
+class SocketClient
+{
 
     // The address the socket will be bound to
     protected $_address;
@@ -61,26 +74,29 @@ class SocketClient {
      * @param string $address
      * @param int $port
      */
-    public function __construct($address, $port) {
+    public function __construct($address, $port)
+    {
         $this->_address = $address;
-        $this->_port = $port;
+        $this->_port    = $port;
     }
     /**
      * __destruct
      */
-    public function __destruct() {
+    public function __destruct()
+    {
         $this->_close();
     }
     /**
      * reset everything to default when been cloned
      */
-    public function __clone() {
-        $this->_address = null;
-        $this->_port = null;
-        $this->_socket = null;
-        $this->_timeout = 1000;
-        $this->is_debug = false;
-        $this->_log_file = null;
+    public function __clone()
+    {
+        $this->_address          = null;
+        $this->_port             = null;
+        $this->_socket           = null;
+        $this->_timeout          = 1000;
+        $this->is_debug          = false;
+        $this->_log_file         = null;
         $this->_encode_crypt_key = null;
         $this->_decode_crypt_key = null;
     }
@@ -88,7 +104,8 @@ class SocketClient {
      * set timeout in minisecond
      * @param int $timeout
      */
-    public function setTimeout($timeout) {
+    public function setTimeout($timeout)
+    {
         if ($timeout && is_numeric($timeout)) {
             $this->_timeout = $timeout;
         }
@@ -98,52 +115,59 @@ class SocketClient {
      * @param string $address
      * @param int $port
      */
-    public function setAddressPort($address, $port) {
+    public function setAddressPort($address, $port)
+    {
         if (!$address || !$port || !is_numeric($port)) {
-            return ;
+            return;
         }
         $this->_address = $address;
-        $this->_port = $port;
+        $this->_port    = $port;
     }
     /**
      * encode crypt key getter
      * @return string
      */
-    public function getEncodeCryptKey() {
+    public function getEncodeCryptKey()
+    {
         return $this->_encode_crypt_key;
     }
     /**
      * crypt key setter
      * @param string $encode_crypt_key
      */
-    public function setEncodeCryptKey($encode_crypt_key) {
+    public function setEncodeCryptKey($encode_crypt_key)
+    {
         $this->_encode_crypt_key = $encode_crypt_key;
     }
     /**
      * decode crypt key getter
      * @return string
      */
-    public function getDecodeCryptKey() {
+    public function getDecodeCryptKey()
+    {
         return $this->_decode_crypt_key;
     }
     /**
      * @param string $crypt_key
      */
-    public function setDecodeCryptKey($decode_crypt_key) {
+    public function setDecodeCryptKey($decode_crypt_key)
+    {
         $this->_decode_crypt_key = $decode_crypt_key;
     }
     /**
      * set debug mode
      * @param bool $is_debug
      */
-    public function setIsDebug($is_debug) {
+    public function setIsDebug($is_debug)
+    {
         $this->is_debug = $is_debug;
     }
     /**
      * Set log file
      * @param string $log_file
      */
-    public function setLogFile($log_file) {
+    public function setLogFile($log_file)
+    {
         $this->_log_file = $log_file;
     }
 
@@ -153,8 +177,8 @@ class SocketClient {
      * @param bool $is_blocking
      * @return bool
      */
-    public function send($data, $is_blocking = true, &$response = null) {
-
+    public function send($data, $is_blocking = true, &$response = null)
+    {
         $this->_createSocket($is_blocking);
         $is_success = $this->_send($this->_socket, $data, $is_blocking, $response);
         if ($is_success) {
@@ -167,7 +191,7 @@ class SocketClient {
         }
         $this->_send($this->_socket, 'exit');
         $this->_close();
-        return (bool)$is_success;
+        return (bool) $is_success;
     }
     /**
      * Send data to a client
@@ -175,14 +199,14 @@ class SocketClient {
      * @param string $data
      * @return bool
      */
-    protected function _send(&$socket, $data) {
-
-        if($this->_encode_crypt_key) {
+    protected function _send(&$socket, $data)
+    {
+        if ($this->_encode_crypt_key) {
             $data = get_crypt_value($data, $this->_encode_crypt_key);
         }
         $data = sprintf('%s%s%s', $data, "\n", chr(0));
         $sent = socket_write($socket, $data, strlen($data));
-        if($sent === false || $sent < strlen($data)) {
+        if ($sent === false || $sent < strlen($data)) {
             $this->log('send data to ' . $socket . ':' . $data . ' failed', true);
             return false;
         }
@@ -193,8 +217,8 @@ class SocketClient {
      * read data from socket
      * @return any type
      */
-    protected function _read(&$socket) {
-
+    protected function _read(&$socket)
+    {
         $response = @socket_read($socket, 2048, PHP_NORMAL_READ);
         if ($response === null || $response === false) {
             return $response;
@@ -210,7 +234,8 @@ class SocketClient {
     /**
      * Close the socket
      */
-    protected function _close() {
+    protected function _close()
+    {
         if ($this->_socket) {
             $this->onBeforeServerDisconnnected($this->_socket);
             @socket_shutdown($this->_socket);
@@ -220,18 +245,18 @@ class SocketClient {
     /**
      * Create socket
      */
-    protected function _createSocket($is_with_blocking = true) {
-
+    protected function _createSocket($is_with_blocking = true)
+    {
         $retry = 3;
         while ($retry) {
             $this->_socket = @socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-            if($this->_socket) {
+            if ($this->_socket) {
                 break;
             }
             sleep(0.5);
             $retry--;
         }
-        if(!$this->_socket) {
+        if (!$this->_socket) {
             throw new SocketException('Could not create socket');
         }
         socket_set_option(
@@ -240,17 +265,17 @@ class SocketClient {
             SO_RCVTIMEO,
             array('sec' => 0, 'usec' => $this->_timeout)
         );
-        $retry = 3;
+        $retry      = 3;
         $is_success = false;
         while ($retry) {
             $is_success = @socket_connect($this->_socket, $this->_address, $this->_port);
-            if($is_success) {
+            if ($is_success) {
                 break;
             }
             sleep(0.5);
             $retry--;
         }
-        if(!$is_success) {
+        if (!$is_success) {
             throw new SocketException('Could not create socket connection');
         }
         if ($is_with_blocking) {
@@ -262,7 +287,7 @@ class SocketClient {
             $this->log('connected to server:' . $response, true);
         }
         $this->onServerConnected($this->_socket);
-        if(!$is_with_blocking && $this->_socket) {
+        if (!$is_with_blocking && $this->_socket) {
             socket_set_nonblock($this->_socket);
         }
     }
@@ -272,12 +297,13 @@ class SocketClient {
      * @param string $message
      * @param bool $socketError
      */
-    public function log($message, $socketError = false) {
+    public function log($message, $socketError = false)
+    {
         if ($this->is_debug) {
             $messageStr = '[' . date('d/m/Y H:i:s') . '] ' . $message;
             if ($socketError) {
-                $errNo    = socket_last_error();
-                $errMsg    = socket_strerror($errNo);
+                $errNo  = socket_last_error();
+                $errMsg = socket_strerror($errNo);
                 $messageStr .= ' : #' . $errNo . ' ' . $errMsg;
             }
             $messageStr .= "\n";
@@ -289,21 +315,23 @@ class SocketClient {
      * @param resource socket
      * @param fixed $data
      */
-    protected function onDataReceived($socket, $data) {
+    protected function onDataReceived($socket, $data)
+    {
     }
 
     /**
      * OnServerConnnected Event. To be override if you want to expand your system
      * @param resource $socket
      */
-    protected function onServerConnected($socket) {
+    protected function onServerConnected($socket)
+    {
     }
 
     /**
      * OnBeforeServerDisconnnected Event. To be override if you want to expand your system
      * @param resource $socket
      */
-    protected function onBeforeServerDisconnnected($socket) {
+    protected function onBeforeServerDisconnnected($socket)
+    {
     }
-
 }

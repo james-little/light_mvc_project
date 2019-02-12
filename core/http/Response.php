@@ -1,7 +1,24 @@
 <?php
-namespace core\http;
+namespace lightmvc\core\http;
 
-class Response {
+/**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+class Response
+{
 
     /**
      * Response content
@@ -20,7 +37,8 @@ class Response {
     /**
      * __constructor
      */
-    protected function __construct() {
+    protected function __construct()
+    {
         $this->_headers       = [];
         $this->_contents      = '';
         $this->is_compress    = false;
@@ -30,7 +48,8 @@ class Response {
      * get instatnce
      * @return Request
      */
-    final public static function getInstance() {
+    final public static function getInstance()
+    {
         if (self::$instance !== null) {
             return self::$instance;
         }
@@ -41,7 +60,8 @@ class Response {
      * get http response contents
      * @return string
      */
-    final public function getContents() {
+    final public function getContents()
+    {
         return $this->_contents;
     }
     /**
@@ -49,7 +69,8 @@ class Response {
      * @param string $contens
      * @return string
      */
-    final public function setContents($contents) {
+    final public function setContents($contents)
+    {
         $this->_contents = $contents;
     }
     /**
@@ -57,14 +78,16 @@ class Response {
      * @param string $contens
      * @return string
      */
-    final public function appendContents($contents) {
+    final public function appendContents($contents)
+    {
         $this->_contents .= $contents;
     }
     /**
      * get all headers
      * @return array
      */
-    final public function getAllHeaders() {
+    final public function getAllHeaders()
+    {
         return $this->_headers;
     }
     /**
@@ -73,7 +96,8 @@ class Response {
      * @param string $header
      * @return void
      */
-    final public function setHeader($key, $header) {
+    final public function setHeader($key, $header)
+    {
         $this->_headers[$key] = $header;
     }
     /**
@@ -81,7 +105,8 @@ class Response {
      * @param string $key
      * @return void
      */
-    final public function removeHeader($key) {
+    final public function removeHeader($key)
+    {
         unset($this->_headers[$key]);
     }
     /**
@@ -89,14 +114,16 @@ class Response {
      * @param bool $is_compress
      * @return array
      */
-    final public function setIsCompress($is_compress = false) {
+    final public function setIsCompress($is_compress = false)
+    {
         $this->is_compress = $is_compress;
     }
     /**
      * get is_compress
      * @return array
      */
-    final public function getIsCompress() {
+    final public function getIsCompress()
+    {
         return $this->is_compress;
     }
     /**
@@ -104,21 +131,24 @@ class Response {
      * @param int $compress_level
      * @return array
      */
-    final public function setCompressLevel($compress_level = 5) {
+    final public function setCompressLevel($compress_level = 5)
+    {
         $this->compress_level = $compress_level;
     }
     /**
      * get compress level
      * @return array
      */
-    final public function getCompressLevel() {
+    final public function getCompressLevel()
+    {
         return $this->compress_level;
     }
     /**
      * send response
      * @return void
      */
-    public function send() {
+    public function send()
+    {
         $this->_headers['Content-Length'] = strlen($this->_contents);
         if ($this->is_compress) {
             $this->_headers['Content-Encoding'] = 'gzip';

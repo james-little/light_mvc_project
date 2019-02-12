@@ -1,8 +1,19 @@
 <?php
-namespace socket;
-
-use exception\SocketException;
-/**
+/*
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Socket Server.
  * =======================================================
  * This class is created based on http://cyrilmazur.com/2010/03/sockets-server-in-php.html
@@ -37,9 +48,12 @@ use exception\SocketException;
  * @package socket
  * @version 1.0
  **/
+namespace lightmvc\socket;
 
-class SocketServer {
+use lightmvc\exception\SocketException;
 
+class SocketServer
+{
     // The address the socket will be bound to
     protected $_address;
     // The port the socket will be bound to
@@ -59,30 +73,33 @@ class SocketServer {
     protected $_decode_crypt_key;
 
     /**
-     * Constructor
+     * Constructor.
+     *
      * @param string $address
-     * @param int $port
-     * @param int $maxClients
+     * @param int    $port
+     * @param int    $maxClients
      */
-    public function __construct($address, $port, $max_clients) {
-
+    public function __construct($address, $port, $max_clients)
+    {
         $this->_address = $address;
         $this->_port = $port;
         $this->_max_clients = $max_clients;
-        $this->_clients = array();
+        $this->_clients = [];
     }
     /*
      */
-    public function __destruct() {
+    public function __destruct()
+    {
         $this->stop();
     }
     /*
      */
-    public function __clone() {
+    public function __clone()
+    {
         $this->_address = null;
         $this->_port = null;
         $this->_max_clients = null;
-        $this->_clients = array();
+        $this->_clients = [];
         $this->_socket = null;
         $this->_socket_timeout = 500;
         $this->is_debug = false;
@@ -91,66 +108,84 @@ class SocketServer {
         $this->_decode_crypt_key = null;
     }
     /**
-     * set the debug mode
+     * set the debug mode.
+     *
      * @param bool $is_debug
      */
-    public function setIsDebug($is_debug) {
+    public function setIsDebug($is_debug)
+    {
         $this->is_debug = $is_debug;
     }
     /**
-     * set the log file
+     * set the log file.
+     *
      * @param string $log_file
      */
-    public function setLogFile($log_file) {
+    public function setLogFile($log_file)
+    {
         $this->_log_file = $log_file;
     }
     /**
-     * encode crypt key getter
+     * encode crypt key getter.
+     *
      * @param string $encode_crypt_key
+     *
      * @return string
      */
-    public function getEncodeCryptKey() {
+    public function getEncodeCryptKey()
+    {
         return $this->_encode_crypt_key;
     }
     /**
-     * encode crypt key setter
+     * encode crypt key setter.
+     *
      * @param string $encode_crypt_key
      */
-    public function setEncodeCryptKey($encode_crypt_key) {
+    public function setEncodeCryptKey($encode_crypt_key)
+    {
         $this->_encode_crypt_key = $encode_crypt_key;
     }
     /**
-     * decode crypt key getter
+     * decode crypt key getter.
+     *
      * @return string
      */
-    public function getDecodeCryptKey() {
+    public function getDecodeCryptKey()
+    {
         return $this->_decode_crypt_key;
     }
     /**
-     * decode crypt key setter
+     * decode crypt key setter.
+     *
      * @param string $decode_crypt_key
      */
-    public function setDecodeCryptKey($decode_crypt_key) {
+    public function setDecodeCryptKey($decode_crypt_key)
+    {
         $this->_decode_crypt_key = $decode_crypt_key;
     }
     /**
-     * set socket timeout
+     * set socket timeout.
+     *
      * @param string $socket_timeout
      */
-    public function setSocketTimeout($socket_timeout) {
-        if ($socket_timeout) $this->_socket_timeout = $socket_timeout;
+    public function setSocketTimeout($socket_timeout)
+    {
+        if ($socket_timeout) {
+            $this->_socket_timeout = $socket_timeout;
+        }
     }
     /**
-     * get socket timeout
+     * get socket timeout.
      */
-    public function getSocketTimeout() {
+    public function getSocketTimeout()
+    {
         return $this->_socket_timeout;
     }
     /**
-     * Start the server
+     * Start the server.
      */
-    public function start() {
-
+    public function start()
+    {
         if (!extension_loaded('sockets')) {
             die('The sockets extension is not loaded.');
         }
@@ -161,32 +196,31 @@ class SocketServer {
 
         // create master socket
         $this->_socket = @socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        if(!$this->_socket) {
+        if (!$this->_socket) {
             throw new SocketException('Could not create socket');
         }
         // to prevent: address already in use
         $is_set_option = @socket_set_option($this->_socket, SOL_SOCKET, SO_REUSEADDR, 1);
-        if(!$is_set_option) {
+        if (!$is_set_option) {
             throw new SocketException('Could not set up SO_REUSEADDR');
         }
         @socket_set_nonblock($this->_socket);
         // bind socket to port
         $is_bind_socket = @socket_bind($this->_socket, $this->_address, $this->_port);
-        if(!$is_bind_socket) {
+        if (!$is_bind_socket) {
             throw new SocketException('Could not bind to socket');
         }
         $this->log('------------socket server started --------------- ');
-        $this->log('master socket is ' . $this->_socket . ':' . $this->_port);
+        $this->log('master socket is '.$this->_socket.':'.$this->_port);
         // start listening for connections
         $is_setup_listener = socket_listen($this->_socket);
-        if(!$is_setup_listener) {
+        if (!$is_setup_listener) {
             throw new SocketException('Could not set up socket listener');
         }
-        $this->log('Server started on ' . $this->_address . ':' . $this->_port);
+        $this->log('Server started on '.$this->_address.':'.$this->_port);
         $read = $write = $except = null;
         // infinite loop
-        while(true) {
-
+        while (true) {
             if (function_exists('gc_collect_cycles')) {
                 gc_collect_cycles();
             }
@@ -205,7 +239,7 @@ class SocketServer {
             }
             // attempt to create a new socket
             $socket_client = socket_accept($this->_socket);
-            @socket_set_option($socket_client, SOL_SOCKET, SO_RCVTIMEO, array('sec' => 5, 'usec'=> 0));
+            @socket_set_option($socket_client, SOL_SOCKET, SO_RCVTIMEO, array('sec' => 5, 'usec' => 0));
             // if socket created successfuly, add it to the clients array and write message log
             if (!$socket_client) {
                 $this->log('Impossible to connect new client', true);
@@ -223,9 +257,9 @@ class SocketServer {
             $this->_clients[] = $socket_client;
 //             $this->_client_connect_time[$socket_client] = time();
             if (socket_getpeername($socket_client, $ip)) {
-                $this->log('New client connected: ' . $socket_client . ' (' . $ip . ')');
+                $this->log('New client connected: '.$socket_client.' ('.$ip.')');
             } else {
-                $this->log('New client connected: ' . $socket_client);
+                $this->log('New client connected: '.$socket_client);
             }
             $this->onClientConnected($socket_client);
             // check the message from clients
@@ -234,26 +268,26 @@ class SocketServer {
     }
 
     /**
-     * listen to each clients
+     * listen to each clients.
      */
-    private function listenClients(&$read) {
-
+    private function listenClients(&$read)
+    {
         if (empty($read)) {
-            return ;
+            return;
         }
         // foreach client that is ready to be read
-        foreach($read as $client) {
+        foreach ($read as $client) {
             // we don't read data from the master socket
             if ($client == $this->_socket) {
                 $this->log('skip read from master');
                 continue;
             }
-            $this->log('start read from ' . $client);
+            $this->log('start read from '.$client);
             $input = $this->_read($client);
             if ($input === false) {
-//                 if (time() - $this->_client_connect_time[$client] > 180) {
-//                     $this->_disconnect($client);
-//                 }
+                //                 if (time() - $this->_client_connect_time[$client] > 180) {
+                //                     $this->_disconnect($client);
+                //                 }
                 continue;
             }
             if ($input === null) {
@@ -269,15 +303,15 @@ class SocketServer {
     }
 
     /**
-     * Stop the server: disconnect all the coonected clients, close the master socket
+     * Stop the server: disconnect all the coonected clients, close the master socket.
      */
-    public function stop() {
-
-        foreach($this->_clients as $client) {
+    public function stop()
+    {
+        foreach ($this->_clients as $client) {
             @socket_shutdown($client, 2);
             @socket_close($client);
         }
-        $this->_clients = array();
+        $this->_clients = [];
         if ($this->_socket) {
             @socket_shutdown($this->_socket, 2);
             @socket_close($this->_socket);
@@ -286,13 +320,15 @@ class SocketServer {
     }
 
     /**
-     * Disconnect a client
+     * Disconnect a client.
+     *
      * @param resource $client
+     *
      * @return bool
      */
-    protected function _disconnect(&$client, $is_close_socket = true) {
-
-        $this->log('Client disconnected: ' . $client);
+    protected function _disconnect(&$client, $is_close_socket = true)
+    {
+        $this->log('Client disconnected: '.$client);
         // custom method called
         $this->onClientDisconnected($client);
         // unset variable in the clients array
@@ -309,100 +345,117 @@ class SocketServer {
     }
 
     /**
-     * read data from socket
+     * read data from socket.
+     *
      * @return string
      */
-    protected function _read(&$client) {
-
+    protected function _read(&$client)
+    {
         $data = @socket_read($client, 2048, PHP_NORMAL_READ);
-        $this->log('data from client:' . $client . ':' . var_export($data, true), true);
+        $this->log('data from client:'.$client.':'.var_export($data, true), true);
         if ($data === false || $data === null) {
             return $data;
         }
-        $data = trim($data, chr(0) . chr(10) . "\t\r");
+        $data = trim($data, chr(0).chr(10)."\t\r");
         if ($this->_decode_crypt_key) {
             $data = decode_crypt_value($data, $this->_decode_crypt_key);
         }
         // custom method called
         $this->onDataReceived($client, $data);
+
         return $data;
     }
 
     /**
-     * Send data to a client
+     * Send data to a client.
+     *
      * @param resource $client
-     * @param string $data
+     * @param string   $data
+     *
      * @return bool
      */
-    protected function _send(&$client, $data) {
-
+    protected function _send(&$client, $data)
+    {
         if ($this->_encode_crypt_key) {
             $data = get_crypt_value($data, $this->_encode_crypt_key);
         }
         $data = sprintf('%s%s%s', $data, "\n", chr(0));
         $sent = @socket_write($client, $data, strlen($data));
-        if($sent === false) {
-            $this->log('send data to ' . $client . ':' . $data . ' failed', true);
+        if ($sent === false) {
+            $this->log('send data to '.$client.':'.$data.' failed', true);
+
             return false;
         }
-        $this->log('send data to ' . $client . ':' . $data . ' success', true);
+        $this->log('send data to '.$client.':'.$data.' success', true);
+
         return true;
     }
 
     /**
-     * Method called after a value had been read
+     * Method called after a value had been read.
+     *
      * @abstract
+     *
      * @param resource $socket
-     * @param string $data
+     * @param string   $data
      */
-    protected function onDataReceived(&$client, $data) {
-        $this->log('onDataReceived: ' . $data, true);
+    protected function onDataReceived(&$client, $data)
+    {
+        $this->log('onDataReceived: '.$data, true);
     }
 
     /**
-     * Method called after a new client is connected
+     * Method called after a new client is connected.
+     *
      * @param resource $socket
      */
-    protected function onClientConnected(&$client) {
+    protected function onClientConnected(&$client)
+    {
         $this->_send($client, 'connected');
     }
 
     /**
-     * Method called after a new client is disconnected
+     * Method called after a new client is disconnected.
+     *
      * @param resource $socket
      */
-    protected function onClientDisconnected(&$client) {
+    protected function onClientDisconnected(&$client)
+    {
     }
     /**
      * Method called when the select() system call on the given arrays of sockets
-     * timeout
+     * timeout.
      */
-    protected function onClientTimeout() {
+    protected function onClientTimeout()
+    {
     }
     /**
-     * Write log messages to the console
+     * Write log messages to the console.
+     *
      * @param string $message
-     * @param bool $socketError
+     * @param bool   $socketError
      */
-    public function log($message, $socket_error = false) {
+    public function log($message, $socket_error = false)
+    {
         if ($this->is_debug) {
-            $message_str = '[' . date('Y/m/d H:i:s') . '] ' . $message;
+            $message_str = '['.date('Y/m/d H:i:s').'] '.$message;
             if ($socket_error) {
-                $err_no    = socket_last_error();
-                $errMsg    = socket_strerror($err_no);
-                $message_str .= ' : #' . $err_no . ' ' . $errMsg;
+                $err_no = socket_last_error();
+                $errMsg = socket_strerror($err_no);
+                $message_str .= ' : #'.$err_no.' '.$errMsg;
             }
             $message_str .= "\n";
             error_log($message_str, 3, $this->_log_file);
         }
     }
     /**
-     * write to console
+     * write to console.
+     *
      * @param string $message
      */
-    public function console($message) {
-        $message = '[' . date('Y/m/d H:i:s') . '] ' . $message . "\n";
+    public function console($message)
+    {
+        $message = '['.date('Y/m/d H:i:s').'] '.$message."\n";
         echo $message;
     }
-
 }

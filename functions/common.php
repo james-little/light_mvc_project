@@ -1,6 +1,8 @@
 <?php
 
-use info\InfoCollector;
+use lightmvc\info\InfoCollector;
+use lightmvc\Strings;
+use lightmvc\Application;
 
 // -----------------------  SYSTEM MESSAGES -----------------------------------//
 /**
@@ -9,8 +11,8 @@ use info\InfoCollector;
  * @param array $param
  * @return string
  */
-function __message($message, $param = null, $textdomain = null) {
-
+function __message($message, $param = null, $textdomain = null)
+{
     if (empty($message)) {
         return '';
     }
@@ -37,7 +39,10 @@ function __message($message, $param = null, $textdomain = null) {
  * @param string $message
  */
 function __add_info(
-    $message, $type = InfoCollector::TYPE_LOGIC, $level = InfoCollector::LEVEL_INFO) {
+    $message,
+    $type = InfoCollector::TYPE_LOGIC,
+    $level = InfoCollector::LEVEL_INFO
+) {
     if ($type != InfoCollector::TYPE_EXCEPTION) {
         if (defined('ENABLE_INFO_COLLECT') && ENABLE_INFO_COLLECT === false) {
             return;
@@ -54,7 +59,8 @@ function __add_info(
  * @param Exception $e
  * @return string
  */
-function __exception_message(Exception $e) {
+function __exception_message(Exception $e)
+{
     return $e->getFile() . ':' . $e->getLine() . ' :: '
     . $e->getMessage();
 }
@@ -65,15 +71,14 @@ function __exception_message(Exception $e) {
  * @param array $array
  * @return array
  */
-function array_clear_empty($array) {
+function array_clear_empty($array)
+{
     if (!is_array($array)) {
         return $array;
     }
-    foreach ($array as $key => $val) {
-        if ($val === null || $val == '') {
-            unset($array[$key]);
-        }
-    }
+    $array = array_filter($array, function ($val) {
+        return $val !== null && $val !== '';
+    });
     return $array;
 }
 /**
@@ -82,7 +87,8 @@ function array_clear_empty($array) {
  * @param array $array
  * @return boolean
  */
-function in_array_pro($value, $array) {
+function in_array_pro($value, $array)
+{
     if (empty($array)) {
         return false;
     }
@@ -99,22 +105,23 @@ function in_array_pro($value, $array) {
  *         'b' => 2,
  *         'c' => 3
  *     )
- *     $column_array = array('a', 'c');
- *     filter_array($data_map, $column_array);
+ *     $column_list = array('a', 'c');
+ *     filter_array($data_map, $column_list);
  *
  *     output:
  *         array('a' => 1, 'c' => 3)
  * @param array $data_map
- * @param array $column_array
+ * @param array $column_list
  */
-function filter_array($data_map, $column_array = array(), $not_empty = false) {
-    if (empty($data_map) || !is_array($column_array)) {
-        return array();
+function filter_array($data_map, $column_list = [], $not_empty = false)
+{
+    if (empty($data_map) || !is_array($column_list)) {
+        return [];
     }
-    if (empty($column_array)) {
+    if (empty($column_list)) {
         return $data_map;
     }
-    $array = array_intersect_key($data_map, array_flip($column_array));
+    $array = array_intersect_key($data_map, array_flip($column_list));
     if ($not_empty === false) {
         return $array;
     }
@@ -128,8 +135,8 @@ function filter_array($data_map, $column_array = array(), $not_empty = false) {
  *         array('a' => 21, 'b' => 22, 'c' => 23),
  *         array('a' => 31, 'b' => 32, 'c' => 33)
  *     )
- *     $column_array = array('a', 'c');
- *     array_get_column($data_map, $column_array);
+ *     $column_list = array('a', 'c');
+ *     array_get_column($data_map, $column_list);
  *
  *     output:
  *     array(
@@ -140,17 +147,14 @@ function filter_array($data_map, $column_array = array(), $not_empty = false) {
  * @param array $array_list
  * @param array $column_list
  */
-function array_get_column($array_list, $column_list) {
+function array_get_column($array_list, $column_list)
+{
     if (empty($column_list)) {
         return $array_list;
     }
-    $data_list = array();
-    foreach ($column_list as $column) {
-        foreach ($array_list as $key => $array) {
-            if (array_key_exists($column, $array)) {
-                $data_list[$key][$column] = $array[$column];
-            }
-        }
+    $data_list = [];
+    foreach ($array_list as $key => $array) {
+        $data_list[$key] = filter_array($array, $column_list);
     }
     return $data_list;
 }
@@ -172,67 +176,29 @@ function array_get_column($array_list, $column_list) {
  * @param boolean $enable_duplicate
  * @return array
  */
-function array_get_column_value($array_list, $column, $enable_duplicate = false) {
+function array_get_column_value($array_list, $column, $enable_duplicate = false)
+{
     if (empty($array_list)) {
-        return array();
+        return [];
     }
     if (empty($column) || !is_string($column)) {
-        return array();
+        return [];
     }
-    $data_list = array();
-    foreach ($array_list as $key => $array) {
-        if (array_key_exists($column, $array)) {
-            $data_list[] = $array[$column];
-        }
-    }
+    $data_list = array_column($array_list, $column);
     if (!$enable_duplicate) {
         $data_list = array_unique($data_list);
     }
     return $data_list;
 }
-/**
- * get specified data from array
- * @example
- *     given array:
- *         $records = array(
- *           array('id' => 2135, 'first_name' => 'John'),
- *           array('id' => 2131, 'first_name' => 'Sally'),
- *           array('id' => 2137, 'first_name' => 'Peter'),
- *          );
- *          $data_list = array_get_column_value($records, 'id');
- *
- *      result would be:
- *          array(2135,2131,2137)
- * @param array $array_list
- * @param string $column
- * @param boolean $enable_duplicate
- * @return array
- */
-function array_get_column_kvalue($array_list, $column, $enable_duplicate = false) {
-    if (empty($array_list)) {
-        return array();
-    }
-    if (empty($column) || !is_string($column)) {
-        return array();
-    }
-    $data_list = array();
-    foreach ($array_list as $key => $array) {
-        if (array_key_exists($column, $array)) {
-            $data_list[$key] = $array[$column];
-        }
-    }
-    if (!$enable_duplicate) {
-        $data_list = array_unique($data_list);
-    }
-    return $data_list;
-}
+
 /**
  * make multi-value string.
  *     example: 2,3,1,5 => 1,2,3,5
  * @param array|string $data
  * @return string
  */
-function make_multi_val_string($data) {
+function make_multi_val_string($data)
+{
     if (empty($data)) {
         return '';
     }
@@ -258,7 +224,7 @@ function make_multi_val_string($data) {
  *           array('id' => 2131, 'first_name' => 'Sally'),
  *           array('id' => 2137, 'first_name' => 'Peter'),
  *          );
- *          $data_list = array_get_column_value($records, 'id');
+ *          $data_list = order_by($records, 'id');
  *
  *      result would be:
  *          array(2135,2131,2137)
@@ -266,28 +232,35 @@ function make_multi_val_string($data) {
  * @param string $column
  * @return array
  */
-function order_by($array_list, $column) {
+function order_by($array_list, $column, $order = 'asc')
+{
     if (empty($array_list)) {
         return [];
     }
-    $is_sort_column_numeric = null;
-    $sort_list              = [];
-    foreach ($array_list as $key => $array) {
-        $sort_list[$array[$column]][] = $key;
-        if ($is_sort_column_numeric === null) {
-            $is_sort_column_numeric = is_numeric($array[$column]);
-        }
+    $is_sort_column_numeric = is_numeric(current($array_list)[$column]);
+    $sort_key_list          = [];
+    foreach ($array_list as $index => &$array) {
+        $sort_key_list[$array[$column]] = $array;
+    }
+    if ($order) {
+        $order = strtolower($order);
     }
     if ($is_sort_column_numeric) {
-        ksort($sort_list, SORT_NUMERIC);
+        if ($order && $order == 'desc') {
+            krsort($sort_key_list, SORT_NUMERIC);
+        } else {
+            ksort($sort_key_list, SORT_NUMERIC);
+        }
     } else {
-        ksort($sort_list, SORT_STRING);
+        if ($order && $order == 'desc') {
+            krsort($sort_key_list, SORT_STRING);
+        } else {
+            ksort($sort_key_list, SORT_STRING);
+        }
     }
     $result_list = [];
-    foreach ($sort_list as $array) {
-        foreach ($array as $val) {
-            $result_list[] = $array_list[$val];
-        }
+    foreach ($sort_key_list as $array) {
+        array_push($result_list, $array);
     }
     return $result_list;
 }
@@ -297,7 +270,8 @@ function order_by($array_list, $column) {
  * @param mixed $val
  * @return string
  */
-function convert_string($val) {
+function convert_string($val)
+{
     if (is_string($val)) {
         return $val;
     }
@@ -314,7 +288,8 @@ function convert_string($val) {
  * @param $val
  * @return string
  */
-function _serialize($val) {
+function _serialize($val)
+{
     if (function_exists('igbinary_serialize')) {
         $val = igbinary_serialize($val);
     } else {
@@ -327,7 +302,8 @@ function _serialize($val) {
  * @param $val
  * @return mixed
  */
-function _unserialize($val) {
+function _unserialize($val)
+{
     if (function_exists('igbinary_unserialize')) {
         $val = igbinary_unserialize($val);
     } else {
@@ -348,7 +324,8 @@ function _unserialize($val) {
  * @param  string $str2
  * @return string
  */
-function merge_string($str1, $str2) {
+function merge_string($str1, $str2)
+{
     if (empty($str1) && empty($str2)) {
         return '';
     }
@@ -382,7 +359,8 @@ function merge_string($str1, $str2) {
  * @param  int $len1
  * @return array
  */
-function split_string($str, $len1) {
+function split_string($str, $len1)
+{
     $str_array = [0 => '', 1 => ''];
     if (empty($str)) {
         return $str_array;
@@ -408,19 +386,12 @@ function split_string($str, $len1) {
     return $str_array;
 }
 /**
- * check date
- * @param string $date
- * @return bool
- */
-function validate_date($date_str) {
-    return strtotime($date_str) === false ? false : true;
-}
-/**
  * check is chinese
  * @param  string  $str
  * @return bool
  */
-function is_chinese_str($str) {
+function is_chinese_str($str)
+{
     if (empty($str)) {
         return false;
     }
@@ -434,7 +405,8 @@ function is_chinese_str($str) {
  * @param  string  $str
  * @return bool
  */
-function is_japanese_str($str) {
+function is_japanese_str($str)
+{
     if (empty($str)) {
         return false;
     }
@@ -450,6 +422,49 @@ function is_japanese_str($str) {
     }
     return false;
 }
+/**
+ * check if the string is json
+ * @param  string  $str
+ * @return bool
+ */
+function is_json($str)
+{
+    if (empty($str)) {
+        return false;
+    }
+    if (!is_string($str)) {
+        return false;
+    }
+    if (is_array(json_decode($str, true)) && json_last_error() == 0) {
+        return true;
+    }
+    return false;
+}
+/**
+ * camelize string
+ * @param  string  $string
+ * @param  string  $delimiter
+ * @param  boolean $is_capitalize_first
+ * @return string
+ */
+function camelize($string, $delimiter = '_', $is_capitalize_first = true)
+{
+    $str = str_replace($delimiter, '', ucwords($string, $delimiter));
+    if (!$is_capitalize_first) {
+        $str = lcfirst($str);
+    }
+    return $str;
+}
+/**
+ * convert cameel case string to underscore case
+ * @param  string $string
+ * @param  string $delimiter
+ * @return string
+ */
+function from_camelcase($string, $delimiter = '_')
+{
+    return ltrim(strtolower(preg_replace('/[A-Z]/', $delimiter . '$0', $string)), $delimiter);
+}
 
 //-----------------------  ENCODING -----------------------------------//
 
@@ -459,13 +474,13 @@ function is_japanese_str($str) {
  * @param string $delimiter
  * @return array
  */
-function csv_to_array($file_name, $delimiter = ',') {
-
+function csv_to_array($file_name, $delimiter = ',')
+{
     $handle = @fopen($file_name, 'r');
     if ($handle === false) {
-        return array();
+        return [];
     }
-    $data = array();
+    $data = [];
     while (($row = @fgetcsv($handle, 1000, $delimiter)) !== false) {
         $data[] = $row;
     }
@@ -484,30 +499,30 @@ function csv_to_array($file_name, $delimiter = ',') {
  *          false: failed
  *          string: file_name maded
  */
-function make_file($base_dir, $type = 'monthly', $is_make_file = true) {
-
+function make_file($base_dir, $type = 'monthly', $is_make_file = true)
+{
     if (!in_array($type, array('daily', 'monthly', 'hourly', 'weekly'))) {
         return false;
     }
     $file_name  = '';
     $sub_folder = '';
     switch ($type) {
-    case 'monthly':
-        $sub_folder = $base_dir;
-        $file_name  = date('Ym') . '.log';
-        break;
-    case 'weekly':
-        $sub_folder = "{$base_dir}/" . date('Ym');
-        $file_name  = date('YW') . '.log';
-        break;
-    case 'daily':
-        $sub_folder = "{$base_dir}/" . date('Ym');
-        $file_name  = date('Ymd') . '.log';
-        break;
-    case 'hourly':
-        $sub_folder = "{$base_dir}/" . date('Ym');
-        $file_name  = date('YmdH') . '.log';
-        break;
+        case 'monthly':
+            $sub_folder = $base_dir;
+            $file_name  = date('Ym') . '.log';
+            break;
+        case 'weekly':
+            $sub_folder = "{$base_dir}/" . date('Ym');
+            $file_name  = date('YW') . '.log';
+            break;
+        case 'daily':
+            $sub_folder = "{$base_dir}/" . date('Ym');
+            $file_name  = date('Ymd') . '.log';
+            break;
+        case 'hourly':
+            $sub_folder = "{$base_dir}/" . date('Ym');
+            $file_name  = date('YmdH') . '.log';
+            break;
     }
     if (!is_dir($sub_folder)) {
         @mkdir($sub_folder, 0777, true);
@@ -530,8 +545,8 @@ function make_file($base_dir, $type = 'monthly', $is_make_file = true) {
  * @param  int     $mode
  * @return bool
  */
-function mkdir_r($path, $mode = 0755) {
-
+function mkdir_r($path, $mode = 0755)
+{
     $dirs = explode(DIRECTORY_SEPARATOR, $path);
     $dir  = '';
     foreach ($dirs as $part) {
@@ -547,12 +562,13 @@ function mkdir_r($path, $mode = 0755) {
     return true;
 }
 /**
- * delete folder and files below
+ * delete folder files below
  * @param  string  $dir
  * @param  boolean $is_delete_self
  * @return void
  */
-function del_dir_files($dir) {
+function del_dir_files($dir)
+{
     if (!is_dir($dir)) {
         return;
     }
@@ -576,7 +592,8 @@ function del_dir_files($dir) {
  * @param  boolean $is_delete_self
  * @return void
  */
-function del_dir_r($dir, $is_delete_self = false) {
+function del_dir_r($dir, $is_delete_self = false)
+{
     if (!is_dir($dir)) {
         return;
     }
@@ -598,12 +615,13 @@ function del_dir_r($dir, $is_delete_self = false) {
     }
 }
 /**
- * path info for multiple-byte string
+ * path info for multiple-byte file path string
  * @param  string $path
  * @param  int $options
  * @return array
  */
-function mb_pathinfo($path, $options = null) {
+function mb_pathinfo($path, $options = null)
+{
     $path  = urlencode($path);
     $parts = null === $options ? pathinfo($path) : pathinfo($path, $options);
     foreach ($parts as $field => $value) {
@@ -617,7 +635,8 @@ function mb_pathinfo($path, $options = null) {
  * @param  int $mode
  * @return
  */
-function chmod_r($path, $mode = 0755) {
+function chmod_r($path, $mode = 0755)
+{
     $dir = new DirectoryIterator($path);
     foreach ($dir as $item) {
         if ($item->isDot()) {
@@ -634,7 +653,8 @@ function chmod_r($path, $mode = 0755) {
  * @param  string $path
  * @param  int $owner
  */
-function chown_r($path, $owner) {
+function chown_r($path, $owner)
+{
     $dir = new DirectoryIterator($path);
     foreach ($dir as $item) {
         if ($item->isDot()) {
@@ -651,7 +671,8 @@ function chown_r($path, $owner) {
  * @param  string $path
  * @param  int $group
  */
-function chgrp_r($path, $group) {
+function chgrp_r($path, $group)
+{
     $dir = new DirectoryIterator($path);
     foreach ($dir as $item) {
         if ($item->isDot()) {
@@ -672,7 +693,8 @@ function chgrp_r($path, $group) {
  * @param boolean $base64_encode
  * @return mixed null if decode failed
  */
-function decode_crypt_value($crypt_value, $crypt_key, $base64_encode = false) {
+function decode_crypt_value($crypt_value, $crypt_key, $base64_encode = false)
+{
     if (!function_exists('mcrypt_module_open')) {
         return null;
     }
@@ -716,7 +738,8 @@ function decode_crypt_value($crypt_value, $crypt_key, $base64_encode = false) {
  * @param boolean $base64_encode
  * @return string encoded data
  */
-function get_crypt_value($string, $crypt_key, $base64_encode = false) {
+function get_crypt_value($string, $crypt_key, $base64_encode = false)
+{
     if (!function_exists('mcrypt_module_open')) {
         return null;
     }
@@ -749,7 +772,8 @@ function get_crypt_value($string, $crypt_key, $base64_encode = false) {
  * @param string $iv
  * @return mixed null if decode failed
  */
-function decode_mcrypt_value($encrypt_value, $crypt_key, $iv) {
+function decode_mcrypt_value($encrypt_value, $crypt_key, $iv)
+{
     if (!function_exists('mcrypt_decrypt')) {
         return null;
     }
@@ -772,7 +796,8 @@ function decode_mcrypt_value($encrypt_value, $crypt_key, $iv) {
  * @param boolean $iv
  * @return string encoded data
  */
-function get_mcrypt_value($string, $crypt_key, $iv) {
+function get_mcrypt_value($string, $crypt_key, $iv)
+{
     if (!function_exists('mcrypt_decrypt')) {
         return null;
     }
@@ -787,7 +812,8 @@ function get_mcrypt_value($string, $crypt_key, $iv) {
  * hex -> binary
  * @param string $hexdata
  */
-function hex2bin5_3($hexdata) {
+function hex2bin5_3($hexdata)
+{
     $bindata = '';
     $len     = strlen($hexdata);
     for ($i = 0; $i < $len; $i += 2) {
@@ -803,7 +829,8 @@ function hex2bin5_3($hexdata) {
  * @param bool $with_symbol
  * @return string
  */
-function get_random_string($length, $with_symbol = false) {
+function get_random_string($length, $with_symbol = false)
+{
     $str   = '';
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     if ($with_symbol) {
@@ -818,16 +845,29 @@ function get_random_string($length, $with_symbol = false) {
  * Create a random 32 character MD5 token
  * @return string
  */
-function token() {
+function token()
+{
+    mt_srand(random_int(0 - PHP_INT_MAX, PHP_INT_MAX));
     return md5(str_shuffle(chr(mt_rand(32, 126)) . uniqid() . microtime(true)));
 }
 
 //-----------------------  DATE -----------------------------------//
 /**
+ * check if $date1 is before $date2
+ * @param string $date1
+ * @param string $date2
+ * @return bool
+ */
+function is_before($date1, $date2)
+{
+    return strtotime($date1) <= strtotime($date2);
+}
+/**
  * format to UTC
  * @param number | string $date
  */
-function format_2_UTC($date) {
+function format_2_UTC($date, $delimiter = '/')
+{
     // Get the default timezone
     $default_tz = date_default_timezone_get();
     // Set timezone to UTC
@@ -836,10 +876,185 @@ function format_2_UTC($date) {
     if (is_string($date)) {
         $date = strtotime($date);
     }
-    $utc_format = date('Y/m/d\TG:i:s\Z', $date);
+    $utc_format = date("Y{$delimiter}m{$delimiter}d\TG:i:s\Z", $date);
     // Might not need to set back to the default but did just in case
     date_default_timezone_set($default_tz);
     return $utc_format;
+}
+/**
+ * get week date
+ * get date string with specified weekday of first/second/third/fourth week of
+ * months of year
+ * --------------------------
+ * example
+ * get the date string of the sunday of the first week of Apirl, 2016
+ *
+ * $weekday_date = get_week_date(1, 0, 4, 2016);
+ *
+ * @param  int $num
+ * @param  int $weekday
+ * @param  int $month
+ * @param  int $year
+ * @return string
+ */
+function get_week_date($num, $weekday, $month, $year)
+{
+    $weekday_name = get_weekday_name($weekday);
+    if (is_null($weekday_name)) {
+        return null;
+    }
+    if ($num > 5) {
+        return null;
+    }
+    $num_text = null;
+    switch ($num) {
+        case 1:
+            $num_text = 'first';
+            break;
+        case 2:
+            $num_text = 'second';
+            break;
+        case 3:
+            $num_text = 'third';
+            break;
+        case 4:
+            $num_text = 'fourth';
+            break;
+    }
+    $month_text = date('F', mktime(0, 0, 0, $month, 10));
+    $dt         = new DateTime("{$num_text} {$weekday_name} of {$month_text} {$year}");
+    return $dt->format('Y-m-d');
+}
+/**
+ * get weekday text name by numeric weekday number
+ * @param  int $weekday
+ * @return string
+ */
+function get_weekday_name($weekday)
+{
+    $name = null;
+    switch ($weekday) {
+        case 0:
+            $name = 'Sunday';
+            break;
+        case 1:
+            $name = 'Monday';
+            break;
+        case 2:
+            $name = 'Tuesday';
+            break;
+        case 3:
+            $name = 'Wednesday';
+            break;
+        case 4:
+            $name = 'Thursday';
+            break;
+        case 5:
+            $name = 'Friday';
+            break;
+        case 6:
+            $name = 'Saturday';
+            break;
+    }
+    return $name;
+}
+/**
+ * check date
+ * @param string $date
+ * @param string $format
+ * @return bool
+ */
+function validate_date($date_str, $format = null)
+{
+    $d = null;
+    try {
+        if ($format) {
+            $d = DateTime::createFromFormat($format, $date_str);
+        } else {
+            $d = new DateTime($date_str);
+        }
+    } catch (Exception $e) {
+        return false;
+    }
+    if (!$d) {
+        return false;
+    }
+    if ($format) {
+        return $d->format($format) == $date_str;
+    }
+    $format    = 'Y-m-d';
+    $date_str1 = $d->format($format);
+    if ($date_str1 != $date_str) {
+        return false;
+    }
+    $d = DateTime::createFromFormat($format, $date_str1);
+    return $d->format($format) == $date_str1;
+}
+/**
+ * check datetime string
+ * @param string $datetime
+ * @param string $format
+ * @return bool
+ */
+function validate_datetime($datetime_str, $format = null)
+{
+    $d = null;
+    try {
+        if ($format) {
+            $d = DateTime::createFromFormat($format, $datetime_str);
+        } else {
+            $d = new DateTime($datetime_str);
+        }
+    } catch (Exception $e) {
+        return false;
+    }
+    if (!$d) {
+        return false;
+    }
+    if ($format) {
+        return $d->format($format) == $datetime_str;
+    }
+    $format = 'Y-m-d H:i';
+    if (substr_count($datetime_str, ':') > 1) {
+        $format = 'Y-m-d H:i:s';
+    }
+    $datetime_str1 = $d->format($format);
+    if ($datetime_str1 != $datetime_str) {
+        return false;
+    }
+    $d = DateTime::createFromFormat($format, $datetime_str1);
+    return $d->format($format) == $datetime_str1;
+}
+/**
+ * check timestamp number is valid
+ *
+ * @param int $timestamp
+ * @return bool
+ */
+function validate_timestamp($timestamp)
+{
+    if (!is_numeric($timestamp)) {
+        return false;
+    }
+    if (!$timestamp) {
+        return false;
+    }
+    return date('Y-m-d H:i:s', $timestamp) !== false;
+}
+//-----------------------  NUMERIC -----------------------------------//
+/**
+ * check if value is between start and end
+ * @param numeric $val
+ * @param numeric $start
+ * @param numeric $end
+ * @return bool
+ */
+function between($val, $start, $end)
+{
+    if (!is_numeric($val)) {
+        return false;
+    }
+    return $val >= $start && $val < $end;
 }
 
 //-----------------------  ECHO BIG STRING -----------------------------------//
@@ -848,7 +1063,8 @@ function format_2_UTC($date) {
  * @param string $string
  * @param int $buffer_size
  */
-function echo_pro($string, $buffer_size = 8192) {
+function echo_pro($string, $buffer_size = 8192)
+{
     if (empty($string)) {
         return '';
     }
@@ -867,13 +1083,15 @@ function echo_pro($string, $buffer_size = 8192) {
  * read user input from console
  * @return string
  */
-function read_console() {
+function read_console()
+{
     return trim(fgets(STDIN));
 }
 /**
  * write message to standard output stream
  * @param $string
  */
-function write_console($string) {
+function write_console($string)
+{
     fwrite(STDOUT, $string);
 }

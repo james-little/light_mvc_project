@@ -1,6 +1,21 @@
 <?php
 
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
  * CURL
  * multi hanle supported
  * =======================================================
@@ -11,8 +26,6 @@
  * SAMPLE:
  * $curl = new Curl();
  * $curl->addUrl('http://www.google.com', $option_list);
- * $curl->addUrl('http://www.google.co.jp', $option_list);
- * $curl->addUrl('http://www.yahoo.co.jp', $option_list);
  * $contents = $curl->exec();
  *
  * ■ multi-handle mode:
@@ -22,85 +35,97 @@
  * $curl = new Curl();
  * $curl->setIsMultiOn(true); // set curl to multi handle mode
  * $curl->setMaxRequest(20); // optional. but with a default value 50
- * while(count($url_list)) {
+ * while (count($url_list)) {
  *     $key = key($url_list);
  *     $url = current($url);
- *     if($curl->addUrl($url, $option_list)) {
+ *     if ($curl->addUrl($url, $option_list)) {
  *         unset($url_list[$key]);
- *     }else{
+ *     } else {
  *         $content_list = $curl->exec();
  *     }
  * }
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-class Curl {
+namespace lightmvc;
+
+class Curl
+{
+
+    const REQUSET_GET    = 1;
+    const REQUSET_POST   = 2;
+    const REQUSET_PUT    = 3;
+    const REQUSET_DELETE = 4;
 
     protected $_max_request = 50;
     // multi thread support
     protected $_multi_handle;
-    protected $_curl_list = array();
-    protected $_default_option_list = array(
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_0,
-        CURLOPT_TIMEOUT => 1,
+    protected $_curl_list           = [];
+    protected $_default_option_list = [
+        CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_0,
+        CURLOPT_TIMEOUT        => 1,
         CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_MAXREDIRS => 5,
-        CURLOPT_VERBOSE => false,
-        CURLOPT_RETURNTRANSFER => true
-    );
-    // cookie directory
-    protected $_cookie;
+        CURLOPT_MAXREDIRS      => 5,
+        CURLOPT_VERBOSE        => false,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING       => 'gzip,deflate,sdch',
+    ];
     // multi support
     protected $_is_multi_on = false;
+    private $err_mapping;
 
-
-    /**
-     * __construct
-     */
-    public function __construct() {
-        $this->_cookie = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'curl_cookie';
-        $this->_default_option_list[CURLOPT_COOKIEJAR] = $this->_cookie;
-        $this->_default_option_list[CURLOPT_COOKIEFILE] = $this->_cookie;
+    private function loadErrMapping()
+    {
+        if ($this->err_mapping !== null) {
+            return;
+        }
+        $this->err_mapping = require __DIR__ . DS . 'curl' . DS . 'curl_err.php';
     }
-
     /**
      * setter
      * set multi mode
      * @param unknown_type $is_multi_on
      */
-    public function setIsMultiOn($is_multi_on) {
+    public function setIsMultiOn($is_multi_on)
+    {
         if (is_bool($is_multi_on) || is_numeric($is_multi_on)) {
-            $this->_is_multi_on = (bool)$is_multi_on;
+            $this->_is_multi_on = (bool) $is_multi_on;
         }
     }
     /**
      * is_multi_on getter
      * @return bool
      */
-    public function getIsMultiOn() {
+    public function getIsMultiOn()
+    {
         return $this->_is_multi_on;
     }
     /**
      * max_request setter
      * @param int $max_request
      */
-    public function setMaxRequest($max_request) {
-        if (is_numeric($max_request) && $max_request) $this->_max_request = $max_request;
+    public function setMaxRequest($max_request)
+    {
+        if (is_numeric($max_request) && $max_request) {
+            $this->_max_request = $max_request;
+        }
     }
     /**
      * max_request getter
      * @return int
      */
-    public function getMaxRequest() {
+    public function getMaxRequest()
+    {
         return $this->_max_request;
     }
     /**
      * add url (not use post nor get to send data)
      * @param string $url
-     * @param array $options CURL option
+     * @param array  $options CURL option
      * @return null / int
      */
-    public function addRawUrl($url, $options = array()) {
+    public function addRawUrl($url, $options = [])
+    {
         if (!$url) {
             return null;
         }
@@ -114,21 +139,22 @@ class Curl {
         if ($options && is_array($options)) {
             $this->setCurlOption($curl, $options);
         }
-        $resource_id = (int)$curl;
+        $resource_id                    = (int) $curl;
         $this->_curl_list[$resource_id] = $curl;
-        $this->setCurlOption($this->_curl_list[$resource_id], array(CURLOPT_URL => $url), true);
+        $this->setCurlOption($this->_curl_list[$resource_id], [CURLOPT_URL => $url], true);
         return $resource_id;
     }
     /**
      * add url
-     * @param string $url
-     * @param array $options CURL option
-     * @param bool $is_by_post
-     * @param mixed $var
+     * @param string  $url
+     * @param array   $options CURL option
+     * @param int     $request_type
+     * @param mixed   $var array|string
+     * @param boolean $is_json_request
      * @return null / int
      */
-    public function addUrl($url, $options = array(), $is_by_post = false, $var = null) {
-
+    public function addUrl($url, $options = [], $request_type = self::REQUSET_POST, $var = null, $is_json_request = false)
+    {
         if (!$url) {
             return null;
         }
@@ -138,50 +164,118 @@ class Curl {
         if (count($this->_curl_list) >= $this->_max_request) {
             return null;
         }
-        $curl = curl_init();
-        if ($options && is_array($options)) {
-            $this->setCurlOption($curl, $options);
-        }
-        $resource_id = (int)$curl;
+        $curl                           = curl_init();
+        $resource_id                    = (int) $curl;
         $this->_curl_list[$resource_id] = $curl;
-        if ($is_by_post) {
-            $set_curl_post_options = array(
-                CURLOPT_URL => $url,
-                CURLOPT_POST => true
-            );
-            if (!$var) {
-                $var = array();
-            }
-            if (is_string($var)) {
-                $var = explode('&', $var);
-            }
-            $url_part_array = parse_url($url);
-            $var_tmp = array();
-            if(isset($url_part_array['query'])) {
-                $var_tmp = explode('&', $url_part_array['query']);
-            }
-            $var = array_merge($var_tmp, $var);
-            $set_curl_post_options[CURLOPT_POSTFIELDS] = $var;
-            $this->setCurlOption($this->_curl_list[$resource_id], $set_curl_post_options, true);
-        } else {
-            if (!empty($var) && is_array($var)) {
-                $url_part_array = parse_url($url);
-                $var_tmp = array();
-                if(!empty($url_part_array['query'])) {
-                    $var_tmp = explode('&', $url_part_array['query']);
-                }
-                $var_tmp = array_merge($var_tmp, $var);
-                $url = $url_part_array['scheme'] . '://' . $url_part_array['host'] . $url_part_array['path'];
-                if ($var_tmp && count($var_tmp)) {
-                    $url .= '?';
-                    $url .= http_build_query($var_tmp);
-                }
-            }
-            $this->setCurlOption($this->_curl_list[$resource_id], array(
-                CURLOPT_URL => $url,
-                CURLOPT_HTTPGET => true
-            ), true);
+        switch ($request_type) {
+            case self::REQUSET_GET:
+                return $this->addUrlGet($url, $var, $options, $resource_id);
+            case self::REQUSET_PUT:
+                return $this->addUrlPut($url, $var, $options, $resource_id, $is_json_request);
+            case self::REQUSET_DELETE:
+                return $this->addUrlDelete($url, $options, $resource_id);
         }
+        return $this->addUrlPost($url, $var, $options, $resource_id, $is_json_request);
+    }
+    /**
+     * add url by post
+     * @param string       $url
+     * @param array | null $var  : post data
+     * @param array | null $options : post options
+     * @param int          $resource_id
+     * @param boolean      $is_json_request
+     * @return int: resource_id
+     */
+    private function addUrlPost($url, $var, $options, $resource_id, $is_json_request)
+    {
+        // POST
+        $var = empty($var) ? [] : $var;
+        if (is_string($var)) {
+            parse_str($var, $var);
+        }
+        $parsed_url_part_list = simple_parse_url($url);
+        $var                  = array_merge($parsed_url_part_list['query_param'], $var);
+
+        $options = emtpy($options) ? [] : $options;
+        // options
+        $options[CURLOPT_URL]           = $parsed_url_part_list['uri'];
+        $options[CURLOPT_CUSTOMREQUEST] = 'POST';
+        $options[CURLOPT_POST]          = true;
+        $options[CURLOPT_POSTFIELDS]    = $is_json_request ? json_encode($var) : http_build_query($var);
+        if ($is_json_request) {
+            $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+            $options[CURLOPT_HTTPHEADER][] = 'Content-Length: ' . strlen($options[CURLOPT_POSTFIELDS]);
+        }
+        $this->setCurlOption($this->_curl_list[$resource_id], $options);
+        return $resource_id;
+    }
+    /**
+     * add url by put
+     * @param string        $url
+     * @param array | null  $var
+     * @param array | null  $options
+     * @param int           $resource_id
+     * @param boolean       $is_json_request
+     * @return int: resource_id
+     */
+    private function addUrlPut($url, $var, $options, $resource_id, $is_json_request)
+    {
+        // PUT
+        $var = empty($var) ? [] : $var;
+        if (is_string($var)) {
+            parse_str($var, $var);
+        }
+        $parsed_url_part_list = simple_parse_url($url);
+        $var                  = array_merge($parsed_url_part_list['query_param'], $var);
+
+        $options                        = emtpy($options) ? [] : $options;
+        $options[CURLOPT_URL]           = $parsed_url_part_list['uri'];
+        $options[CURLOPT_CUSTOMREQUEST] = 'PUT';
+        $options[CURLOPT_POSTFIELDS]    = $is_json_request ? json_encode($var) : http_build_query($var);
+        if ($is_json_request) {
+            $options[CURLOPT_HTTPHEADER][] = 'Content-Type: application/json';
+            $options[CURLOPT_HTTPHEADER][] = 'Content-Length: ' . strlen($options[CURLOPT_POSTFIELDS]);
+        }
+        $this->setCurlOption($this->_curl_list[$resource_id], $options);
+        return $resource_id;
+    }
+    /**
+     * add url by delete
+     * @param string        $url
+     * @param array | null  $var
+     * @param array | null  $options
+     * @param int           $resource_id
+     * @return int: resource_id
+     */
+    private function addUrlDelete($url, $options, $resource_id)
+    {
+        // DELETE
+        $options[CURLOPT_URL]           = $url;
+        $options[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+        $options                        = emtpy($options) ? [] : $options;
+        $this->setCurlOption($this->_curl_list[$resource_id], $options);
+        return $resource_id;
+    }
+    /**
+     * add url by get
+     * @param string        $url
+     * @param array | null  $var
+     * @param array | null  $options
+     * @param int           $resource_id
+     * @return int: resource_id
+     */
+    private function addUrlGet($url, $var, $options, $resource_id)
+    {
+        // GET
+        $var = empty($var) ? '' : $var;
+        if (is_string($var)) {
+            parse_str($var, $var);
+        }
+        $url = add_get_params_to_url($url, $var);
+
+        $options[CURLOPT_URL]     = $url;
+        $options[CURLOPT_HTTPGET] = true;
+        $this->setCurlOption($this->_curl_list[$resource_id], $options);
         return $resource_id;
     }
     /**
@@ -224,24 +318,14 @@ class Curl {
      * curl_setopt($ch, CURLOPT_FILE, $fh);
      * curl_setopt($ch, CURLOPT_URL, 'http://example.com/example_file.dat');
      */
-    protected function setCurlOption(&$curl, $option_array = array(), $is_exclude_default = false) {
-
+    protected function setCurlOption(&$curl, $option_array = [], $is_exclude_default = false)
+    {
         if (!$curl || !count($option_array)) {
             return false;
         }
-        $curl_option = array();
-        if(!$is_exclude_default) {
-            $curl_option = $this->_default_option_list;
-        }
-        foreach ($option_array as $option_key => $option_value) {
-            $curl_option[$option_key] = $option_value;
-        }
-        if (isset($option_array[CURLOPT_POSTFIELDS]) && is_array($option_array[CURLOPT_POSTFIELDS])) {
-            $curl_option[CURLOPT_POSTFIELDS] = http_build_query($option_array[CURLOPT_POSTFIELDS], '', '&');
-        }
-        foreach ($curl_option as $option_key => $option_value) {
-            @curl_setopt($curl, $option_key, $option_value);
-        }
+        $curl_options = $is_exclude_default ? [] : $this->_default_option_list;
+        $curl_options = $option_array + $curl_options;
+        curl_setopt_array($curl, $curl_options);
     }
     /**
      * curl execute
@@ -282,67 +366,105 @@ class Curl {
      *       %curl_resource_id% => array(contents => %curl_response%, info => %curl_info%, errno => %curl_error_code%)
      *   )
      */
-    public function exec($with_curl_info = false) {
-
+    public function exec($with_curl_info = false)
+    {
         if (!count($this->_curl_list)) {
             return false;
         }
         $contents_list = null;
-        if($this->_is_multi_on) {
-            $this->_multi_handle = null;
-            $this->_multi_handle = curl_multi_init();
-            foreach ($this->_curl_list as $curl) {
-                curl_multi_add_handle($this->_multi_handle, $curl);
-            }
-            $active = null;
-            //execute the handles in multi-handle mode
-            do {
-                curl_multi_exec($this->_multi_handle, $active);
-            } while ($active > 0);
+        if ($with_curl_info) {
+            $this->loadErrMapping();
+        }
+        if ($this->_is_multi_on) {
+            return $this->execMulti($with_curl_info);
+        }
+        return $this->execSingle($with_curl_info);
+    }
+    /**
+     * execute curl with multi-thread mode
+     * @param  bool $with_curl_info
+     * @return array
+     *         key => $contents
+     */
+    private function execMulti($with_curl_info)
+    {
+        $contents_list       = [];
+        $this->_multi_handle = null;
+        $this->_multi_handle = curl_multi_init();
+        foreach ($this->_curl_list as $curl) {
+            curl_multi_add_handle($this->_multi_handle, $curl);
+        }
+        $active = null;
+        //execute the handles in multi-handle mode
+        do {
+            curl_multi_exec($this->_multi_handle, $active);
+            curl_multi_select($this->_multi_handle, 1.0);
+        } while ($active > 0);
 
-            $succeed_curl_list = array();
-            // Now grab the information about the completed requests
-            while ($info = curl_multi_info_read($this->_multi_handle)) {
-                $curl = $info['handle'];
-                $succeed_curl_list[] = (int)$curl;
+        $succeed_curl_list = [];
+        // Now grab the information about the completed requests
+        while ($info = curl_multi_info_read($this->_multi_handle)) {
+            $curl = $info['handle'];
+            if ($info['result'] == CURLE_OK) {
+                $succeed_curl_list[(int) $curl] = 1;
             }
-            foreach ($this->_curl_list as $key => $curl) {
-                if (in_array((int)$curl, $succeed_curl_list)) {
-                    $contents_list[$key]['contents'] = curl_multi_getcontent($curl);
-                    if ($with_curl_info) {
-                        $contents_list[$key]['info'] = curl_getinfo($curl);
-                        $contents_list[$key]['errno'] = curl_errno($curl);
-                    }
-                    curl_multi_remove_handle($this->_multi_handle, $curl);
-                    unset($this->_curl_list[$key]);
+        }
+        foreach ($this->_curl_list as $resource_id => $curl) {
+            if (!isset($succeed_curl_list[(int) $curl])) {
+                continue;
+            }
+            $contents             = [];
+            $contents['contents'] = curl_multi_getcontent($curl);
+            if ($with_curl_info) {
+                $contents['info']  = curl_getinfo($curl);
+                $contents['errno'] = curl_errno($curl);
+                if (isset($this->err_mapping[$contents['errno']])) {
+                    $contents['errno'] = $this->err_mapping[$contents['errno']];
                 }
             }
-        } else {
-            $key = key($this->_curl_list);
-            $curl = current($this->_curl_list);
-            $contents_list['contents'] = curl_exec($curl);
-            if ($with_curl_info) {
-                $contents_list['info'] = curl_getinfo($curl);
-                $contents_list['errno'] = curl_errno($curl);
-            }
-            unset($this->_curl_list[$key]);
+            $contents_list[$resource_id] = $contents;
+            curl_multi_remove_handle($this->_multi_handle, $curl);
+            curl_close($curl);
+            unset($this->_curl_list[$resource_id]);
         }
+        return $contents_list;
+    }
+    /**
+     * execute curl in single mode
+     * @param  bool $with_curl_info
+     * @return array
+     */
+    private function execSingle($with_curl_info)
+    {
+        $contents_list             = [];
+        $key                       = key($this->_curl_list);
+        $curl                      = current($this->_curl_list);
+        $contents_list['contents'] = curl_exec($curl);
+        if ($with_curl_info) {
+            $contents_list['info']  = curl_getinfo($curl);
+            $contents_list['errno'] = curl_errno($curl);
+            if (isset($this->err_mapping[$contents_list['errno']])) {
+                $contents_list['errno'] = $this->err_mapping[$contents_list['errno']];
+            }
+        }
+        curl_close($curl);
+        unset($this->_curl_list[$key]);
         return $contents_list;
     }
     /**
      * close all curl and curl multi handle if in multi-handle mode
      */
-    protected function close() {
-
+    protected function close()
+    {
         if (!count($this->_curl_list)) {
-            return ;
+            return;
         }
         foreach ($this->_curl_list as $curl) {
             if ($this->_multi_handle) {
                 curl_multi_remove_handle($this->_multi_handle, $curl);
             }
             curl_close($curl);
-            $this->_curl_list = array();
+            $this->_curl_list = [];
         }
         if ($this->_multi_handle) {
             curl_multi_close($this->_multi_handle);
@@ -352,28 +474,24 @@ class Curl {
     /**
      * __destruct
      */
-    public function __destruct() {
-
-        if(is_dir($this->_cookie)) {
-            @unlink($this->_cookie);
-        }
+    public function __destruct()
+    {
         $this->close();
     }
     /**
      */
-    public function __clone() {
+    public function __clone()
+    {
         $this->close();
-        $this->_max_request = 50;
-        $this->_default_option_list = array(
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_0,
-            CURLOPT_TIMEOUT => 1,
+        $this->_max_request         = 50;
+        $this->_default_option_list = [
+            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_0,
+            CURLOPT_TIMEOUT        => 1,
             CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_MAXREDIRS => 5,
-            CURLOPT_VERBOSE => false,
-            CURLOPT_RETURNTRANSFER => true
-        );
-        // cookie directory
-        $this->_cookie = null;
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_VERBOSE        => false,
+            CURLOPT_RETURNTRANSFER => true,
+        ];
         // multi support
         $this->_is_multi_on = false;
     }

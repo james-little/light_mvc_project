@@ -1,7 +1,19 @@
 <?php
-namespace view;
-
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Smarty View
  * =======================================================
  * smarty implementation of view interface
@@ -9,23 +21,27 @@ namespace view;
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-use exception\ExceptionCode;
-use exception\ViewException;
-use info\InfoCollector;
+namespace lightmvc\view;
+
+use lightmvc\exception\ExceptionCode;
+use lightmvc\exception\ViewException;
+use lightmvc\info\InfoCollector;
 use Smarty;
-use String;
-use view\ViewInterface;
+use lightmvc\view\ViewInterface;
+use lightmvc\Encoding;
 
 require dirname(FRAMEWORK_ROOT_DIR) . DIRECTORY_SEPARATOR . 'Smarty/libs/Smarty.class.php';
 
-class SmartyView extends Smarty implements ViewInterface {
+class SmartyView extends Smarty implements ViewInterface
+{
 
-    protected $_output_encode = String::ENCODE_UTF8;
+    protected $_output_encode = Encoding::ENCODE_UTF8;
 
     /**
      * construct
      */
-    public function __construct() {
+    public function __construct()
+    {
         // Class Constructor.
         // These automatically get set with each new instance.
         parent::__construct();
@@ -42,8 +58,8 @@ class SmartyView extends Smarty implements ViewInterface {
      *   config_dir      : configuration directory
      *   plugins_dir     : plugin directory
      */
-    public function init($config = null) {
-
+    public function init($config = null)
+    {
         $allowed_settings = [
             'template_dir', 'compile_dir', 'cache',
             'plugins_dir', 'left_delimiter',
@@ -58,31 +74,34 @@ class SmartyView extends Smarty implements ViewInterface {
                 continue;
             }
             switch ($key) {
-            case 'cache':
-                $this->caching        = empty($value['enabled']) ? parent::CACHING_OFF : parent::CACHING_LIFETIME_SAVED;
-                $this->cache_lifetime = empty($value['expire_time']) ? 3600 : $value['expire_time'];
-                $cache_dir            = empty($value['dir']) ? '/tmp' : $value['dir'];
-                $this->setCacheDir($cache_dir);
-                break;
-            case 'output_encode':
-                $this->_output_encode = $value;
-                break;
-            case 'compile_dir':
-                $this->setCompileDir($value);
-                break;
-            case 'template_dir':
-                $this->setTemplateDir($value);
-                break;
-            case 'plugins_dir':
-                $this->addPluginsDir($value);
-                break;
-            default:
-                $this->$key = $value;
-                break;
+                case 'cache':
+                    $this->caching        = empty($value['enabled']) ? parent::CACHING_OFF : parent::CACHING_LIFETIME_SAVED;
+                    $this->cache_lifetime = empty($value['expire_time']) ? 3600 : $value['expire_time'];
+                    $cache_dir            = empty($value['dir']) ? TMP_DIR : $value['dir'];
+                    $this->setCacheDir($cache_dir);
+                    break;
+                case 'output_encode':
+                    $this->_output_encode = $value;
+                    break;
+                case 'compile_dir':
+                    $this->setCompileDir($value);
+                    break;
+                case 'template_dir':
+                    $this->setTemplateDir($value);
+                    break;
+                case 'plugins_dir':
+                    $this->addPluginsDir($value);
+                    break;
+                default:
+                    $this->$key = $value;
+                    break;
             }
             // message
-            __add_info(sprintf('view initialized: %s, %s', $key, var_export($value, true)),
-                InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+            __add_info(
+                sprintf('view initialized: %s, %s', $key, var_export($value, true)),
+                InfoCollector::TYPE_LOGIC,
+                InfoCollector::LEVEL_DEBUG
+            );
         }
         $this->php_handling = Smarty::PHP_ALLOW;
     }
@@ -90,14 +109,16 @@ class SmartyView extends Smarty implements ViewInterface {
      * (non-PHPdoc)
      * @see view.ViewInterface::getOutputEncode()
      */
-    public function getOutputEncode() {
+    public function getOutputEncode()
+    {
         return $this->_output_encode;
     }
     /**
      * (non-PHPdoc)
      * @see view.ViewInterface::assign()
      */
-    public function assign_var($key, $value, $is_by_reference = true) {
+    public function assignVar($key, $value, $is_by_reference = true)
+    {
         if ($is_by_reference) {
             $this->assignByRef($key, $value);
         } else {
@@ -109,8 +130,8 @@ class SmartyView extends Smarty implements ViewInterface {
      * render template
      * @see view.ViewInterface::render()
      */
-    public function render($template_file, $template_var, $cache_param = null) {
-
+    public function render($template_file, $template_var, $cache_param = null)
+    {
         if (empty($template_file)) {
             return '';
         }
@@ -136,14 +157,18 @@ class SmartyView extends Smarty implements ViewInterface {
             // assign template var
             if (!empty($template_var)) {
                 foreach ($template_var as $key => $value) {
-                    $this->assign_var($key, $value);
+                    $this->assignVar($key, $value);
                 }
             }
         }
         $this->muteExpectedErrors();
         $output = $this->fetch($template_file, $cache_id, $compile_id);
-        if ($this->_output_encode != String::ENCODE_UTF8) {
-            $output = String::convert2UTF8($output, String::ENCODE_UTF8);
+        if ($this->_output_encode != Encoding::ENCODE_UTF8) {
+            $output = Encoding::convertEncode(
+                $output,
+                Encoding::ENCODE_UTF8,
+                $this->_output_encode
+            );
         }
         $this->unmuteExpectedErrors();
         return $output;
@@ -153,7 +178,8 @@ class SmartyView extends Smarty implements ViewInterface {
      * @param  string $template_file
      * @return bool
      */
-    private function checkIsTemplateExist($template_file) {
+    private function checkIsTemplateExist($template_file)
+    {
         $template_dirs     = $this->getTemplateDir();
         $is_template_exist = false;
         foreach ($template_dirs as $template_dir) {

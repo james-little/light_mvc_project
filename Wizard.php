@@ -1,5 +1,20 @@
 <?php
-/*
+/**
+ * Copyright 2016 Koketsu.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * ==============================================================================
  * when you want to create a wizard in your app.
  * first get a instance of the Wizard class or you can extend this to create your
  * own wizard class
@@ -16,31 +31,37 @@
  * the data and return the result
  * or even you can customize the stepArray, but what you have to do is overloading the
  * wizard()
- *
  */
-class Wizard {
+namespace lightmvc;
 
-    private $step_list = array();
+class Wizard
+{
+    private $step_list = [];
     private $now_step = 1;
 
     /**
-     * set step list
+     * set step list.
+     *
      * @param array $step_list
      */
-    public function setStepList(array $step_list) {
+    public function setStepList(array $step_list)
+    {
         $this->step_list = $step_list;
     }
     /**
-     * get step list
+     * get step list.
      */
-    public function getStepList() {
+    public function getStepList()
+    {
         return $this->step_list;
     }
     /**
-     * add step to wizard
+     * add step to wizard.
+     *
      * @param string $script
      */
-    public function addStep($script) {
+    public function addStep($script)
+    {
         if (!count($this->step_list)) {
             $this->step_list['1'] = $script;
         } else {
@@ -48,33 +69,42 @@ class Wizard {
         }
     }
     /**
-     * set step
-     * @param int $index
+     * set step.
+     *
+     * @param int    $index
      * @param string $script
      */
-    public function setStep($index, $script) {
+    public function setStep($index, $script)
+    {
         $this->step_list[$index] = $script;
     }
     /**
-     * unset step
+     * unset step.
+     *
      * @param int $index
      */
-    public function unsetStep($index) {
-        if (isset($this->step_list[$index]))
+    public function unsetStep($index)
+    {
+        if (isset($this->step_list[$index])) {
             unset($this->step_list[$index]);
+        }
     }
     /**
-     * set now step
+     * set now step.
+     *
      * @param int $now_step
      */
-    public function setNowStep($now_step = null) {
+    public function setNowStep($now_step = null)
+    {
         $this->now_step = $now_step == null ? 1 : $now_step;
     }
     /**
-     * get now step
+     * get now step.
+     *
      * @return int
      */
-    public function getNowStep() {
+    public function getNowStep()
+    {
         return $this->now_step;
     }
 
@@ -83,7 +113,7 @@ class Wizard {
      * action:
      *     -1: back
      *  1: next:
-     *  0: stop here
+     *  0: stop here.
      *
      * stepArray => array(
      *     '1' => 'scriptPath1',
@@ -92,8 +122,8 @@ class Wizard {
      *     '4' => 'scriptPath4'
      * )
      */
-    public function wizard($act) {
-
+    public function wizard($act)
+    {
         if (!count($this->step_list)) {
             return '';
         }
@@ -106,24 +136,24 @@ class Wizard {
         return $this->step_list[$this->now_step];
     }
     /**
-     * execute forward
+     * execute forward.
      */
-    private function execForward() {
-
+    private function execForward()
+    {
         if ($this->now_step == count($this->step_list)) {
             return $this->step_list[$this->now_step];
         }
-        $init_method_name = 'init' . $this->now_step;
+        $init_method_name = 'init'.$this->now_step;
         if (method_exists($this, $init_method_name)) {
             $this->$init_method_name();
         }
         $data_map = null;
-        $get_data_method = 'getData' . $this->now_step;
+        $get_data_method = 'getData'.$this->now_step;
         if (method_exists($this, $get_data_method)) {
             $data_map = $this->$get_data_method();
         }
         $result = true;
-        $check_data_method = 'checkData' . $this->now_step;
+        $check_data_method = 'checkData'.$this->now_step;
         if (method_exists($this, $check_data_method)) {
             $result = $this->$check_data_method($data_map);
         }
@@ -133,24 +163,30 @@ class Wizard {
         return $this->step_list[$this->now_step];
     }
     /**
-     * execute backward
+     * execute backward.
      */
-    private function execBackward() {
-        if ($this->now_step == 1) return $this->step_list[1];
+    private function execBackward()
+    {
+        if ($this->now_step == 1) {
+            return $this->step_list[1];
+        }
+
         $this->_moveBack();
+
         return $this->step_list[$this->now_step];
     }
     /**
-     * move forward
+     * move forward.
      */
-    protected function _moveNext(){
-        $this->now_step ++;
+    protected function _moveNext()
+    {
+        ++$this->now_step;
     }
     /**
-     * move backward
+     * move backward.
      */
-    protected function _moveBack(){
-        $this->now_step --;
+    protected function _moveBack()
+    {
+        --$this->now_step;
     }
 }
-

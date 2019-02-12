@@ -1,42 +1,62 @@
 <?php
-
-use exception\SessionException;
-
 /**
+ *  Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ==============================================================================
  * Session (secured)
- * =======================================================
  *
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-use info\InfoCollector;
+namespace lightmvc;
 
-class Session {
+use lightmvc\info\InfoCollector;
+use lightmvc\exception\SessionException;
+
+class Session
+{
 
     public static $is_new_session;
     public static $old_session_id;
     public static $is_change_timely = false;
-    private static $is_started = false;
+    private static $is_started      = false;
     private static $session_name;
     private static $handler;
-
-
 
     /**
      * apply session config
      * @param array $session_config
      */
-    public static function applyConfig($session_config) {
-        if (empty($session_config)) return ;
+    public static function applyConfig($session_config)
+    {
+        if (empty($session_config)) {
+            return;
+        }
+
         foreach ($session_config as $session_setting_key => $value) {
-            if($session_setting_key == 'session_id_prefix') {
-                continue ;
+            if ($session_setting_key == 'session_id_prefix') {
+                continue;
             }
             if ($session_setting_key == 'name' && !empty($value)) {
                 self::$session_name = $value;
             } elseif ($session_setting_key == 'always_change' && !empty($value)) {
                 self::$is_change_timely = true;
             } elseif ($value) {
+                if (preg_match('#^Windows#', php_uname())
+                    && $session_setting_key == 'save_handler') {
+                    continue;
+                }
                 ini_set('session.' . $session_setting_key, $value);
             }
         }
@@ -46,7 +66,8 @@ class Session {
      * @param $handler
      * @throws SessionException
      */
-    public static function setHandler($handler) {
+    public static function setHandler($handler)
+    {
         if (!method_exists($handler, 'open')) {
             throw new SessionException('handler must have a method named open');
         }
@@ -83,15 +104,15 @@ class Session {
      * @param string | null $prefix
      * @return bool | numeric
      */
-    public static function startSession($prefix = null) {
-
+    public static function startSession($prefix = null)
+    {
         if (self::$is_started) {
             return ErrorCode::ERROR_SESSION_ALREADY_START;
         }
         if ($prefix && preg_match('#[^\da-zA-Z]#', $prefix)) {
             return ErrorCode::ERROR_SESSION_ID_INVALID;
         }
-        $session_name = self::getSessionName();
+        $session_name   = self::getSessionName();
         $now_session_id = self::getSessionId($session_name, $prefix);
         if ($now_session_id < 0) {
             // return error code
@@ -110,7 +131,7 @@ class Session {
             session_name($session_name);
         }
         if ($is_exist_already) {
-            if(self::$is_change_timely) {
+            if (self::$is_change_timely) {
                 session_id($now_session_id);
                 session_start();
                 $tmp = $_SESSION;
@@ -139,7 +160,8 @@ class Session {
      * @param string | null $session_name
      * @return numeric | string
      */
-    private static function getSessionName() {
+    private static function getSessionName()
+    {
         return is_null(self::$session_name) ? session_name() : self::$session_name;
     }
     /**
@@ -147,7 +169,8 @@ class Session {
      * @param string | null $session_name
      * @return numeric | string
      */
-    private static function getSessionId($session_name, $prefix = null) {
+    private static function getSessionId($session_name, $prefix = null)
+    {
 
         // get session id from cookie
         $now_session_id = get_cookie_pro($session_name);
@@ -164,8 +187,8 @@ class Session {
         if (empty($now_session_id)) {
             // get session id from headers
             $headers = get_all_headers();
-            if(isset($headers['Cookie'])) {
-                if(preg_match("#{$session_name}=([^=;]+)#", $headers['Cookie'], $tmp)) {
+            if (isset($headers['Cookie'])) {
+                if (preg_match("#{$session_name}=([^=;]+)#", $headers['Cookie'], $tmp)) {
                     $now_session_id = $tmp[1];
                 }
             }
@@ -176,8 +199,11 @@ class Session {
             return null;
         }
         if ($prefix && substr($now_session_id, 0, strlen($prefix) + 1) != $prefix . '-') {
-            __add_info('session id prefix dismatch',
-                InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+            __add_info(
+                'session id prefix dismatch',
+                InfoCollector::TYPE_LOGIC,
+                InfoCollector::LEVEL_DEBUG
+            );
             return ErrorCode::ERROR_SESSION_ID_INVALID;
         }
         return $now_session_id;
@@ -187,7 +213,8 @@ class Session {
      * @param string $session_id
      * @param string | null $prefix
      */
-    private static function isSessionExist($session_id) {
+    private static function isSessionExist($session_id)
+    {
         if (self::$handler !== null) {
             return self::$handler->isSessionExist($session_id);
         }
@@ -195,8 +222,11 @@ class Session {
         if (empty($session_file_path)) {
             return false;
         }
-        __add_info('session file: ' . $session_file_path,
-            InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+        __add_info(
+            'session file: ' . $session_file_path,
+            InfoCollector::TYPE_LOGIC,
+            InfoCollector::LEVEL_DEBUG
+        );
         return is_file($session_file_path);
     }
 
@@ -205,16 +235,17 @@ class Session {
      * @param string $session_id
      * @return session file name
      */
-    private static function getSessionFile($session_id) {
+    private static function getSessionFile($session_id)
+    {
         if (empty($session_id)) {
             return false;
         }
         $session_file_path = trim(session_save_path());
         preg_match('#^((\d);)?([^\d]+)#', $session_file_path, $tmp);
-        $file_depth = isset($tmp[2]) ? $tmp[2] : 0;
+        $file_depth        = isset($tmp[2]) ? $tmp[2] : 0;
         $session_file_path = $tmp[3];
         if ($file_depth) {
-            for ($i = 0; $i < $file_depth; $i ++) {
+            for ($i = 0; $i < $file_depth; $i++) {
                 $session_file_path .= DIRECTORY_SEPARATOR . substr($session_id, $i, 1);
             }
         }
@@ -226,8 +257,8 @@ class Session {
      * @param string | null $prefix
      * @return string
      */
-    private static function generateSessioId($prefix = null) {
-
+    private static function generateSessioId($prefix = null)
+    {
         $session_id = '';
         if (is_string($prefix) && strlen($prefix) > 0) {
             $session_id = $prefix . '-';
@@ -238,30 +269,37 @@ class Session {
     /**
      * get is session started
      */
-    public static function getIsStarted() {
+    public static function getIsStarted()
+    {
         return self::$is_started;
     }
     /**
      * close session
      */
-    public static function closeSession() {
+    public static function closeSession()
+    {
         session_write_close();
-        self::$handler = null;
+        self::$handler    = null;
         self::$is_started = false;
     }
     /**
      * destroy session
      */
-    public static function destroySession() {
+    public static function destroySession()
+    {
         session_destroy();
     }
     /**
      * unlink session file
      */
-    public static function unlinkSessionFile($prefix = null) {
-        $session_id = self::getSessionId(self::getSessionName(), $prefix);
+    public static function unlinkSessionFile($prefix = null)
+    {
+        $session_id        = self::getSessionId(self::getSessionName(), $prefix);
         $session_file_path = self::getSessionFile($session_id);
-        if (empty($session_file_path)) return ;
+        if (empty($session_file_path)) {
+            return;
+        }
+
         @unlink($session_file_path);
     }
 }

@@ -1,6 +1,20 @@
 <?php
 
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * ExceptionCode
  * =======================================================
  * exception codes
@@ -8,7 +22,7 @@
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
-namespace exception;
+namespace lightmvc\exception;
 
 /**
  * <pre>
@@ -34,8 +48,8 @@ namespace exception;
  *
  * @package core
  */
-class ExceptionCode {
-
+class ExceptionCode
+{
     /**
      * Db default error
      * @var int
@@ -97,10 +111,15 @@ class ExceptionCode {
      */
     const CACHE_ACCESS_OBJ_ERROR = 202;
     /**
-     * Db config not exist
+     * Cache config not exist
      * @var int
      */
     const CACHE_CONFIG_NOT_EXIST = 203;
+    /**
+     * Cache operation not support
+     * @var int
+     */
+    const CACHE_NOT_SUPPORT_OPERATION = 204;
     /**
      * redis
      * @var int
@@ -306,6 +325,46 @@ class ExceptionCode {
      * @var int
      */
     const REQUEST_NOT_APP = 1501;
+    /**
+     * request
+     * @var int
+     */
+    const REQUEST_NOT_SUPPORT = 1502;
+    /**
+     * request
+     * @var int
+     */
+    const REQUEST_NOT_MATCH = 1503;
+    /**
+     * batch
+     * @var int
+     */
+    const BATCH_DEFAULT = 1600;
+    /**
+     * batch not exist
+     * @var int
+     */
+    const BATCH_NOT_EXIST = 1601;
+    /**
+     * batch outfile file not exist
+     * @var int
+     */
+    const BATCH_OUTPUT_FILE_NOT_EXIST = 1602;
+    /**
+     * batch view not supported
+     * @var int
+     */
+    const BATCH_VIEW_NOT_SUPPORT = 1603;
+    /**
+     * batch view config not exists
+     * @var int
+     */
+    const BATCH_VIEW_CONFIG_NOT_EXIST = 1604;
+    /**
+     * batch view config not exists
+     * @var int
+     */
+    const BATCH_VIEW_FAILED = 1605;
 
     // ----------------------------- APPLICATION LEVEL --------------------------------------------
     /**
@@ -413,5 +472,4 @@ class ExceptionCode {
      * @var int
      */
     const APP_IN_MAINTENANCE = 2020;
-
 }

@@ -1,5 +1,7 @@
 <?php
 
+use lightmvc\ErrorCode;
+
 return [
     ErrorCode::ERROR_DB                              => "database error",
     ErrorCode::ERROR_DB_NOT_SUPPORT                  => "database not support",
@@ -19,6 +21,7 @@ return [
     ErrorCode::ERROR_CACHE_NOT_SUPPORT               => "cache not support",
     ErrorCode::ERROR_CACHE_ACCESS_OBJ_ERROR          => "cache access object error",
     ErrorCode::ERROR_CACHE_CONFIG_FILE_NOT_EXIST     => "cache config file not exist",
+    ErrorCode::ERROR_CACHE_NOT_SUPPORT_OPERATION     => "cache not supported operation",
     // redis
     ErrorCode::ERROR_REDIS                           => "redis error",
     ErrorCode::ERROR_REDIS_CONFIG                    => "redis config error",
@@ -100,6 +103,14 @@ return [
     ErrorCode::ERROR_REQUEST_INVALID_PARAM           => "request param invalid",
     ErrorCode::ERROR_REQUEST_NOT_AJAX                => "request not ajax",
     ErrorCode::ERROR_REQUEST_NOT_APP                 => "request not app",
+    ErrorCode::ERROR_REQUEST_NOT_SUPPORT             => "request not support",
+    // batch
+    ErrorCode::ERROR_BATCH                           => "batch error",
+    ErrorCode::ERROR_BATCH_NOT_EXISTS                => "batch not exists",
+    ErrorCode::ERROR_BATCH_OUTPUT_FILE_NOT_EXISTS    => "batch output file not exists: %s",
+    ErrorCode::ERROR_BATCH_VIEW_NOT_SUPPORT          => "batch view not support",
+    ErrorCode::ERROR_BATCH_VIEW_CONFIG_NOT_EXISTS    => "batch view config not exists",
+    ErrorCode::ERROR_BATCH_VIEW_FAILED               => "batch view initialize failed",
     // debug
     ErrorCode::ERROR_APP_DEBUG_CONFIG_FILE_NOT_EXIST => "application debug config file not exist",
     // controller & action

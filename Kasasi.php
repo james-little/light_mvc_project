@@ -1,6 +1,21 @@
 <?php
 
 /**
+ *  Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ==============================================================================
+ *
  * Kasasi
  * =======================================================
  * convert kanjis to hira/kana/alphabet
@@ -10,12 +25,13 @@
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
+namespace lightmvc;
 
-use exception\ExceptionCode,
-    exception\AppException;
+use lightmvc\exception\AppException;
+use lightmvc\exception\ExceptionCode;
 
-class Kasasi {
-
+class Kasasi
+{
 
     /**
      * convert
@@ -35,18 +51,19 @@ class Kasasi {
      * @return array
      * @throws AppException
      */
-    public static function convert($str, $is_encode = true) {
-        if(!extension_loaded('kakasi')) {
+    public static function convert($str, $is_encode = true)
+    {
+        if (!extension_loaded('kakasi')) {
             throw new AppException('kakasi not loaded', ExceptionCode::WORD_SPLIT_EXTENSION_NOT_LOAD);
         }
-        if(empty($str)) {
-            return array();
+        if (empty($str)) {
+            return [];
         }
-        $wordset = KAKASI_CONVERT($str);
-        $result = array();
+        $wordset        = KAKASI_CONVERT($str);
+        $result         = [];
         $result['hira'] = $wordset->hira;
         $result['kata'] = $wordset->kata;
-        if($is_encode) {
+        if ($is_encode) {
             $result = self::encode($result);
         }
         $result['alph'] = $wordset->alph;
@@ -65,20 +82,21 @@ class Kasasi {
      * @param  boolean $is_encode
      * @return array
      */
-    public static function split($str, $is_encode = true) {
-        if(!extension_loaded('kakasi')) {
+    public static function split($str, $is_encode = true)
+    {
+        if (!extension_loaded('kakasi')) {
             throw new AppException('kakasi not loaded', ExceptionCode::WORD_SPLIT_EXTENSION_NOT_LOAD);
         }
-        if(empty($str)) {
-            return array();
+        if (empty($str)) {
+            return [];
         }
         $result_list = KAKASI_MORPHEME($str);
-        if(empty($result_list)) {
-            return array();
+        if (empty($result_list)) {
+            return [];
         }
         // kill duplicate items
         $result_list = array_flip(array_flip($result_list));
-        if($is_encode) {
+        if ($is_encode) {
             $result_list = self::encode($result_list);
         }
         return $result_list;
@@ -89,8 +107,9 @@ class Kasasi {
      * @param array $word_list
      * @return array
      */
-    public static function encode($word_list) {
-        if(empty($word_list)) {
+    public static function encode($word_list)
+    {
+        if (empty($word_list)) {
             return $word_list;
         }
         foreach ($word_list as $key => $word) {
@@ -98,5 +117,4 @@ class Kasasi {
         }
         return $word_list;
     }
-
 }

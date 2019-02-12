@@ -1,5 +1,4 @@
 <?php
-namespace core;
 /*
  * ensure your table must have columns as following to make class work
  *
@@ -41,8 +40,9 @@ cp_limit_type:
 cp_info(optional):
     to save the copy information where the subtree is from, a typical info format is
     %class_name%:%id%
-
  */
+namespace lightmvc\core;
+
 class TreeModel extends Model {
 
     const INIT_SORT_ASC = 'a';
@@ -140,7 +140,7 @@ class TreeModel extends Model {
         $child_list = $this->queryAllByAnd(array('parent_id' => $node_id, 'section' => $section),
             null, $column_list, $sort);
         if (empty($child_list)) {
-            return array();
+            return [];
         }
         return $child_list;
     }
@@ -157,7 +157,7 @@ class TreeModel extends Model {
         } elseif (is_numeric($node_id)) {
             $now_node = $this->queryByAnd(array('id' => $node_id), null, array('lft', 'rgt', 'section'));
         } else {
-            return array();
+            return [];
         }
         if (empty($now_node)) {
             return false;
@@ -166,7 +166,7 @@ class TreeModel extends Model {
         $sql .= "WHERE lft > :lft AND rgt < :rgt AND section = :section";
         $all_child_list = $this->queryAll($sql, array(':lft' => $now_node['lft'], ':rgt' => $now_node['rgt'], 'section' => $now_node['section']));
         if (empty($all_child_list)) {
-            return array();
+            return [];
         }
         return $all_child_list;
     }
@@ -182,7 +182,7 @@ class TreeModel extends Model {
         } elseif (is_numeric($node_id)) {
             $now_node = $this->queryByAnd(array('id' => $node_id), null, array('lft', 'rgt', 'section'));
         } else {
-            return array();
+            return [];
         }
         if (empty($now_node)) {
             return false;
@@ -227,10 +227,10 @@ class TreeModel extends Model {
         } elseif (is_numeric($node_id)) {
             $now_node = $this->queryByAnd(array('id' => $node_id), null, array('lft', 'rgt', 'section'));
         } else {
-            return array();
+            return [];
         }
         if (empty($now_node)) {
-            return array();
+            return [];
         }
         $sql = "SELECT lft, rgt, section FROM {$this->table} WHERE section = :section ";
         if ($is_include_self) {
@@ -246,7 +246,7 @@ class TreeModel extends Model {
         $navi_list = $this->queryRow($sql,
         array(':lft' => $now_node['lft'], ':rgt' => $now_node['rgt'], ':section' => $now_node['section']));
         if (empty($navi_list)) {
-            return array();
+            return [];
         }
         return $navi_list;
     }
@@ -268,7 +268,7 @@ class TreeModel extends Model {
         }
         $sql = "SELECT " . $column_list === null ? '*' : implode(',', $column_list) . " FROM {$this->table} ";
         $sql .= "WHERE section = :section ";
-        $param = array();
+        $param = [];
         $param[':section'] = $section;
         if (!empty($now_node)) {
             $sql .= " AND lft >= :lft AND rgt <= :rgt";
@@ -278,7 +278,7 @@ class TreeModel extends Model {
         $sql .= "AND rgt - lft = 1";
         $leaf_list = $this->queryAll($sql, $param);
         if (empty($leaf_list)) {
-            return array();
+            return [];
         }
         return $leaf_list;
     }
@@ -295,14 +295,14 @@ class TreeModel extends Model {
         } elseif (is_numeric($node_id)) {
             $now_node = $this->queryByAnd(array('id' => $node_id), null, array('parent_id'));
         } else {
-            return array();
+            return [];
         }
         if (empty($now_node)) {
-            return array();
+            return [];
         }
         $parent = $this->queryByAnd(array('id' => $now_node['parent_id']));
         if (empty($parent)) {
-            return array();
+            return [];
         }
         return $parent;
     }
@@ -596,7 +596,7 @@ class TreeModel extends Model {
         $listObj = new $listClassName();
         $oldDescendantList = $this->getDescendantList();
 
-        $excludeIdArray = array();
+        $excludeIdArray = [];
         $srcTableName = $cpSrcRootObj->tableName;
         $sql = "
             SELECT
@@ -628,7 +628,7 @@ class TreeModel extends Model {
         $addCount = 0;
         $deleteCount = 0;
         $obj = new $className();
-        $depthRootIdArray = array();
+        $depthRootIdArray = [];
         $depthRootIdArray['1'] = $this->id;
         foreach ($cpSrcRootObj->getDescendantList() as $cpSrcObj){
             if($depth && $cpSrcObj->depth - $cpSrcRootObj->depth > $depth){
@@ -783,7 +783,7 @@ class TreeModel extends Model {
      */
     public function importFromYaml($yaml, &$savedIdArray = null){
 
-        $yamlArray = array();
+        $yamlArray = [];
         if (!is_array($yaml)){
             $yamlStr = '';
             if (is_file($yaml)){
@@ -820,7 +820,7 @@ class TreeModel extends Model {
 
         $className = get_class($this);
         $obj = new $className();
-        $idArray = array();
+        $idArray = [];
         foreach ($yamlArray as $key => $yaml) {
             if (is_array($yaml)) {
                 $cloneObj = clone $obj;
@@ -896,15 +896,15 @@ class TreeModel extends Model {
         if (is_file(APP_CACHE . DS . $this->jsonCacheFile)){
 //            return file_get_contents(APP_CACHE . DS . $this->jsonCacheFile);
         }
-        $jsonArray = array();
+        $jsonArray = [];
         $isIncludeSelf = $depth ? false : true;
         $rowArray = $this->_getDescendantRowArray($isIncludeSelf, 0, $depth);
         $rowArray = $this->_setDescendantRowName($rowArray);
         $rowArray = $this->_setDescendantRowData($rowArray);
         $rootArray = array('0' => array(
             'property' => array('name' => 'root', 'id' => 0),
-            'children' => array(),
-            'data' => array()
+            'children' => [],
+            'data' => []
         ));
         foreach($rowArray as $row){
             $target = $row['parent_id'];
@@ -912,18 +912,18 @@ class TreeModel extends Model {
             if (!isset($rootArray[$target])){
                 $rootArray[$target] = array('property' => array('name' => $row['name'], 'id' => $row['id']));
                 if ($row['rgt'] - $row['lft'] != 1){
-                    $rootArray[$target]['children'] = array();
+                    $rootArray[$target]['children'] = [];
                     $rootArray[$target]['loadable'] = true;
                 }
-                $rootArray[$target]['data'] = isset($row['data']) ? $row['data'] : array();
+                $rootArray[$target]['data'] = isset($row['data']) ? $row['data'] : [];
             }
             if (!isset($rootArray[$id])){
                 $rootArray[$id] = array('property' => array('name' => $row['name'], 'id' => $row['id']));
                 if ($row['rgt'] - $row['lft'] != 1){
-                    $rootArray[$id]['children'] = array();
+                    $rootArray[$id]['children'] = [];
                     $rootArray[$id]['loadable'] = true;
                 }
-                $rootArray[$id]['data'] = isset($row['data']) ? $row['data'] : array();
+                $rootArray[$id]['data'] = isset($row['data']) ? $row['data'] : [];
             }
             $rootArray[$target]['children'][] = &$rootArray[$id];
         }
@@ -1011,8 +1011,8 @@ class TreeModel extends Model {
      */
     protected function _setTreeRuleLine($rowArray){
 
-        $lastChildIdParentIdArray = $this->_getLastChildIdParentIdArray();
-        $tempArray = array();
+        $lastChildIdParentIdArray = $this->_getLastChildIdParentId[];
+        $tempArray = [];
         foreach($rowArray as $key => $row){
             $tempDepth = $row['tempDepth'];
             $ruleLine = '';
@@ -1041,8 +1041,8 @@ class TreeModel extends Model {
         if($this->id === 0){
             $this->section = 0;
         }
-        $firstChildIdParentIdArray = array();
-        $bindArray = array();
+        $firstChildIdParentIdArray = [];
+        $bindArray = [];
         $rootEliminateSql = '';
         if ($this->section){
             $rootEliminateSql = ' AND parent_id != 0 ';
@@ -1088,8 +1088,8 @@ class TreeModel extends Model {
         if($this->id === 0){
             $this->section = 0;
         }
-        $lastChildIdParentIdArray = array();
-        $bindArray = array();
+        $lastChildIdParentIdArray = [];
+        $bindArray = [];
         $rootEliminateSql = '';
         if ($this->section){
             $rootEliminateSql = ' AND parent_id != 0 ';

@@ -1,6 +1,21 @@
 <?php
 
 /**
+ *  Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ==============================================================================
+ *
  * PinyinConv
  * =======================================================
  * convert chinese characters to pinyin
@@ -38,12 +53,14 @@
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
+namespace lightmvc;
 
 use Overtrue\Pinyin\Pinyin;
 
 require dirname(FRAMEWORK_ROOT_DIR) . '/overtrue-pinyin/src/Pinyin/Pinyin.php';
 
-class PinyinConv extends Pinyin {
+class PinyinConv extends Pinyin
+{
 
     /**
      * convert chinese character into chinese pinyin
@@ -56,8 +73,9 @@ class PinyinConv extends Pinyin {
      * @param  bool $with_accent
      * @return string
      */
-    public static function convert($text, $with_accent = false) {
-        if(empty($text)) {
+    public static function convert($text, $with_accent = false)
+    {
+        if (empty($text)) {
             return '';
         }
         return parent::trans($text, array('accent' => false));
@@ -67,8 +85,9 @@ class PinyinConv extends Pinyin {
      * @param  string $text
      * @return string
      */
-    public static function getFirstLetter($text) {
-        if(empty($text)) {
+    public static function getFirstLetter($text)
+    {
+        if (empty($text)) {
             return '';
         }
         return parent::letter($text);
@@ -80,9 +99,10 @@ class PinyinConv extends Pinyin {
      *            '冷' => 're4'
      *        )
      */
-    public static function addCustomDic(array $custom_dic) {
-        if(empty($custom_dic)) {
-            return ;
+    public static function addCustomDic(array $custom_dic)
+    {
+        if (empty($custom_dic)) {
+            return;
         }
         return parent::appends($custom_dic);
     }

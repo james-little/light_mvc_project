@@ -1,5 +1,20 @@
 <?php
 /**
+ *  Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ==============================================================================
+ *
  * Image
  * =======================================================
  * http://imagine.readthedocs.org/en/latest/usage/introduction.html#resize-images
@@ -8,14 +23,18 @@
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
+namespace lightmvc;
+
+use lightmvc\exception\ExceptionCode;
+use lightmvc\exception\ImageException;
+use lightmvc\Imagine\Image\Box;
+use lightmvc\Imagine\Image\Point;
+use lightmvc\ClassLoader;
+
 ClassLoader::addScanPath(dirname(FRAMEWORK_ROOT_DIR) . '/imagine/lib/');
 
-use exception\ImageException,
-    exception\ExceptionCode,
-    Imagine\Image\Box,
-    Imagine\Image\Point;
-
-class Image {
+class Image
+{
 
     private static $instance;
     private $imagine;
@@ -26,15 +45,17 @@ class Image {
     /**
      * __construct
      */
-    private function __construct() {
+    private function __construct()
+    {
         $this->imagine = ClassLoader::loadClass('\Imagine\Gd\Imagine');
     }
     /**
      * get instance
      * @return Image
      */
-    public static function getInstance() {
-        if(self::$instance) {
+    public static function getInstance()
+    {
+        if (self::$instance) {
             return self::$instance;
         }
         self::$instance = new static();
@@ -44,18 +65,19 @@ class Image {
      * open image file
      * @param  string $filename
      */
-    public function open($filename) {
-        if(!is_file($filename)) {
+    public function open($filename)
+    {
+        if (!is_file($filename)) {
             throw new ImageException('open image failed', ExceptionCode::IMAGE_OPEN_FAILED);
         }
         try {
-            $this->image = $this->imagine->open($filename);
-            $file_info = File::getFileInfo($filename);
+            $this->image     = $this->imagine->open($filename);
+            $file_info       = File::getFileInfo($filename);
             $this->extension = $file_info['extension'];
-            $this->filename = $file_info['filename'];
+            $this->filename  = $file_info['filename'];
         } catch (Exception $e) {
-            $this->image = null;
-            $this->filename = null;
+            $this->image     = null;
+            $this->filename  = null;
             $this->extension = null;
             throw $e;
         }
@@ -68,8 +90,9 @@ class Image {
      * @param  int $height
      * @param  int $quality
      */
-    public function resize($width, $height, $quality = null) {
-        if(!$this->image) {
+    public function resize($width, $height, $quality = null)
+    {
+        if (!$this->image) {
             throw new ImageException('call open() first', ExceptionCode::IMAGE_OBJECT_EMPTY);
         }
         $this->image = $this->image->resize(new Box($width, $height));
@@ -81,12 +104,13 @@ class Image {
      * @param  int $percentage
      * @param  int $quality
      */
-    public function resizeInPer($percentage, $quality = null) {
-        if(!$this->image) {
+    public function resizeInPer($percentage, $quality = null)
+    {
+        if (!$this->image) {
             throw new ImageException('call open() first', ExceptionCode::IMAGE_OBJECT_EMPTY);
         }
-        $size = $this->getSize();
-        $width = intval($size['width'] * ($percentage / 100));
+        $size   = $this->getSize();
+        $width  = intval($size['width'] * ($percentage / 100));
         $height = intval($size['height'] * ($percentage / 100));
         return $this->resize($width, $height, $quality);
     }
@@ -94,15 +118,16 @@ class Image {
      * rotate image
      * @param  int $angle
      */
-    public function rotate($angle) {
-        if(!$this->image) {
+    public function rotate($angle)
+    {
+        if (!$this->image) {
             throw new ImageException('call open() first', ExceptionCode::IMAGE_OBJECT_EMPTY);
         }
-        if(!$angle) {
+        if (!$angle) {
             return $this->image;
         }
         $this->image = $this->image->rotate($angle);
-       return $this->image;
+        return $this->image;
     }
     /**
      * watermarking the image
@@ -111,16 +136,17 @@ class Image {
      * @param  int    $quality
      * @throws RuntimeException
      */
-    public function watermark($watermark_file) {
-        if(!$this->image) {
+    public function watermark($watermark_file)
+    {
+        if (!$this->image) {
             throw new ImageException('call open() first', ExceptionCode::IMAGE_OBJECT_EMPTY);
         }
-        if(!is_file($watermark_file)) {
+        if (!is_file($watermark_file)) {
             throw new ImageException('call open() first', ExceptionCode::IMAGE_WATERMARK_FILE_ERR);
         }
-        $size = $this->getSize();
-        $watermark = $this->imagine->open($watermark_file);
-        $wSize = $watermark->getSize();
+        $size        = $this->getSize();
+        $watermark   = $this->imagine->open($watermark_file);
+        $wSize       = $watermark->getSize();
         $this->image = $this->image->paste($watermark, new Point(
             $size['width'] - $wSize->getWidth(),
             $size['height'] - $wSize->getHeight()
@@ -131,8 +157,9 @@ class Image {
      * get size
      * @return array
      */
-    public function getSize() {
-        if(!$this->image) {
+    public function getSize()
+    {
+        if (!$this->image) {
             throw new ImageException('call open() first', ExceptionCode::IMAGE_OBJECT_EMPTY);
         }
         $box = $this->image->getSize();
@@ -144,10 +171,10 @@ class Image {
      * @param  int $quality
      * @throws RuntimeException
      */
-    public function save($des_file, $quality = null) {
-
+    public function save($des_file, $quality = null)
+    {
         $file_info = File::getFileInfo($des_file);
-        if(mkdir_r($file_info['dirname']) === false) {
+        if (mkdir_r($file_info['dirname']) === false) {
             throw new ImageException('image destination directory access error', ExceptionCode::IMAGE_DES_DIR_ACCESS_ERR);
         }
         $save_file_config = $this->getSaveFileConfig($quality);
@@ -157,8 +184,8 @@ class Image {
      * get save file config
      * @return array
      */
-    private function getSaveFileConfig($quality = null) {
-
+    private function getSaveFileConfig($quality = null)
+    {
         switch ($this->extension) {
             case 'jpg':
             case 'jpeg':
@@ -174,5 +201,4 @@ class Image {
         }
         return [];
     }
-
 }

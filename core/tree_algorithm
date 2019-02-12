@@ -72,7 +72,7 @@
      *  e: /a/c/e/
     */
     protected function _setPathTag($rowArray){
-        $array4Path = array();
+        $array4Path = [];
         foreach($rowArray as $key => $row){
             $rowArray[$key]['path'] = '';
             if (isset($row['ascii']) && $row['id'] != 0){

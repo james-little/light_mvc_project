@@ -1,20 +1,19 @@
 <?php
-namespace core;
-
-use Application;
-use ClassLoader;
-use core\http\Request;
-use core\http\Response;
-use Datatype;
-use ErrorMessage;
-use exception\AppException;
-use exception\ExceptionCode;
-use exception\ViewException;
-use info\InfoCollector;
-use Validator;
-use view\ViewInterface;
-
 /**
+ * Copyright 2016 Koketsu
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Controller
  * =======================================================
  * Controller manages a set of actions which deal with the corresponding user requests.
@@ -29,9 +28,23 @@ use view\ViewInterface;
  * @author koketsu <jameslittle.private@gmail.com>
  * @version 1.0
  **/
+namespace lightmvc\core;
 
-abstract class Controller {
+use lightmvc\Application;
+use lightmvc\ClassLoader;
+use lightmvc\core\http\Request;
+use lightmvc\core\http\Response;
+use lightmvc\Datatype;
+use lightmvc\ErrorMessage;
+use lightmvc\exception\AppException;
+use lightmvc\exception\ExceptionCode;
+use lightmvc\exception\ViewException;
+use lightmvc\info\InfoCollector;
+use lightmvc\Validator;
+use lightmvc\view\View;
 
+abstract class Controller
+{
     /**
      * cache param: used for template rending
      * example:
@@ -83,22 +96,23 @@ abstract class Controller {
     /**
      * __constructor
      */
-    public function __construct() {
-
+    public function __construct()
+    {
         $this->_request = Request::getInstance();
         // set possible controller render params
         $this->setRenderControllerParams();
         $view_config = $this->getViewConfig();
         $this->setViewType($view_config['type']);
         $this->_view_param    = [];
+        $this->_cache_param   = [];
         $this->_error_message = ErrorMessage::getInstance();
         $this->_validator     = Validator::getInstance();
     }
     /**
      * set controller render params
      */
-    private function setRenderControllerParams() {
-
+    private function setRenderControllerParams()
+    {
         global $GLOBAL;
         if (empty($GLOBAL['render_controller_param'])) {
             return;
@@ -117,7 +131,8 @@ abstract class Controller {
      * @param string $method
      * @return mixed
      */
-    public function getParam($key, $default, $data_type = Datatype::DATA_TYPE_STRING, $method = null) {
+    public function getParam($key, $default, $data_type = Datatype::DATA_TYPE_STRING, $method = null)
+    {
 
         // get from _GET OR _POST
         $val = $this->_request->getParam($key, $default, $data_type, $method);
@@ -128,8 +143,11 @@ abstract class Controller {
             $val = $this->_controller_render_params[$key];
         }
         // message
-        __add_info(sprintf('get param: %s => %s', $key, var_export($val, true)),
-            InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+        __add_info(
+            sprintf('get param: %s => %s', $key, var_export($val, true)),
+            InfoCollector::TYPE_LOGIC,
+            InfoCollector::LEVEL_DEBUG
+        );
         return $val;
     }
     /**
@@ -137,7 +155,8 @@ abstract class Controller {
      * @param string $key
      * @param mixed $val
      */
-    protected function setViewParam($key, $value) {
+    protected function setViewParam($key, $value)
+    {
         $this->_view_param[$key] = $value;
     }
     /**
@@ -145,8 +164,8 @@ abstract class Controller {
      * @param string $key
      * @param mixed $val
      */
-    protected function getViewParam($key) {
-
+    protected function getViewParam($key)
+    {
         if (!array_key_exists($key, $this->_view_param)) {
             return null;
         }
@@ -157,8 +176,8 @@ abstract class Controller {
      * @param string $key
      * @param mixed $val
      */
-    protected function removeViewParam($key) {
-
+    protected function removeViewParam($key)
+    {
         if (!array_key_exists($key, $this->_view_param)) {
             return;
         }
@@ -168,41 +187,47 @@ abstract class Controller {
      * set view type
      * @param string $view_type
      */
-    final protected function setViewType($view_type) {
-
+    final protected function setViewType($view_type)
+    {
         $this->_view_type = $view_type;
         // message
-        __add_info(sprintf('view type has been set to: %s', $view_type),
-            InfoCollector::TYPE_LOGIC, InfoCollector::LEVEL_DEBUG);
+        __add_info(
+            sprintf('view type has been set to: %s', $view_type),
+            InfoCollector::TYPE_LOGIC,
+            InfoCollector::LEVEL_DEBUG
+        );
     }
     /**
      * get view type
      */
-    final protected function getViewType() {
+    final protected function getViewType()
+    {
         return $this->_view_type;
     }
     /**
      * set view
      * @throws ViewException
      */
-    final protected function setView($view_type) {
-
+    final protected function setView($view_type)
+    {
         switch ($view_type) {
-        case ViewInterface::VIEW_TYPE_SMARTY:
-            $this->_view = ClassLoader::loadClass('\view\SmartyView');
-            break;
-        case ViewInterface::VIEW_TYPE_RAIN:
-            $this->_view = ClassLoader::loadClass('\view\RainView');
-            break;
-        case ViewInterface::VIEW_TYPE_JSON:
-            $this->_view = ClassLoader::loadClass('\view\JsonView');
-            break;
-        case ViewInterface::VIEW_TYPE_TEXT:
-            $this->_view = ClassLoader::loadClass('\view\TextView');
-            break;
-        default:
-            throw new ViewException('view type not support: ' . $view_type,
-                ExceptionCode::VIEW_TYPE_NOT_SUPPORT);
+            case View::VIEW_TYPE_SMARTY:
+                $this->_view = ClassLoader::loadClass('\lightmvc\view\SmartyView');
+                break;
+            case View::VIEW_TYPE_RAIN:
+                $this->_view = ClassLoader::loadClass('\lightmvc\view\RainView');
+                break;
+            case View::VIEW_TYPE_JSON:
+                $this->_view = ClassLoader::loadClass('\lightmvc\view\JsonView');
+                break;
+            case View::VIEW_TYPE_TEXT:
+                $this->_view = ClassLoader::loadClass('\lightmvc\view\TextView');
+                break;
+            default:
+                throw new ViewException(
+                    'view type not support: ' . $view_type,
+                    ExceptionCode::VIEW_TYPE_NOT_SUPPORT
+                );
         }
         if ($this->_view) {
             // message
@@ -213,26 +238,28 @@ abstract class Controller {
      * get view config
      * @throws ViewException
      */
-    protected function getViewConfig() {
-
+    protected function getViewConfig()
+    {
         $view_config = Application::getConfigByKey('view');
-        if (empty($view_config)) {
-            $view_config = APPLICATION_CONFIG_DIR . APPLICATION_ENVI . DS . 'view.php';
-            if (!is_file($view_config)) {
-                throw new ViewException(
-                    'config file not exist: ' . $view_config,
-                    ExceptionCode::VIEW_CONFIG_FILE_NOT_FOUND);
-            }
-            $view_config = include $view_config;
-            Application::setConfig('view', $view_config);
+        if (!empty($view_config)) {
+            return $view_config;
         }
+        $view_config = APPLICATION_CONFIG_DIR . APPLICATION_ENVI . DS . 'view.php';
+        if (!is_file($view_config)) {
+            throw new ViewException(
+                'config file not exist: ' . $view_config,
+                ExceptionCode::VIEW_CONFIG_FILE_NOT_FOUND
+            );
+        }
+        $view_config = include $view_config;
+        Application::setConfig('view', $view_config);
         return $view_config;
     }
     /**
      * render
      */
-    final public function render($module, $controller_class, $action_method) {
-
+    final public function render($module, $controller_class, $action_method)
+    {
         if (empty($this->_view)) {
             $this->setView($this->_view_type);
             if (empty($this->_view)) {
@@ -240,8 +267,13 @@ abstract class Controller {
             }
             $this->_view->init($this->getViewConfig());
         }
-        if (empty($this->_view_file_path) && in_array($this->_view_type,
-            [ViewInterface::VIEW_TYPE_RAIN, ViewInterface::VIEW_TYPE_SMARTY])) {
+        if (empty($this->_view_file_path) && in_array(
+            $this->_view_type,
+            [
+                View::VIEW_TYPE_RAIN,
+                View::VIEW_TYPE_SMARTY,
+            ]
+        )) {
             $this->_view_file_path = $this->getViewFilePath($module, $controller_class, $action_method);
         }
         $response = Response::getInstance();
@@ -249,20 +281,22 @@ abstract class Controller {
         // output encode
         $output_encode = $this->_view->getOutputEncode();
         switch ($this->_view_type) {
-        case ViewInterface::VIEW_TYPE_SMARTY:
-        case ViewInterface::VIEW_TYPE_RAIN:
-            $response->setHeader('Content-Type', "text/html; charset={$output_encode}");
-            break;
-        case ViewInterface::VIEW_TYPE_TEXT:
-            $response->setHeader('Content-Type', "text/plain; charset={$output_encode}");
-            break;
-        case ViewInterface::VIEW_TYPE_JSON:
-            $response->setHeader('Cache-Control', 'no-cache, must-revalidate');
-            $response->setHeader('Content-Type', "text/json; charset={$output_encode}");
-            break;
-        default:
-            throw new ViewException('view type not support: ' . $this->_view_type,
-                ExceptionCode::VIEW_TYPE_NOT_SUPPORT);
+            case View::VIEW_TYPE_SMARTY:
+            case View::VIEW_TYPE_RAIN:
+                $response->setHeader('Content-Type', "text/html; charset={$output_encode}");
+                break;
+            case View::VIEW_TYPE_TEXT:
+                $response->setHeader('Content-Type', "text/plain; charset={$output_encode}");
+                break;
+            case View::VIEW_TYPE_JSON:
+                $response->setHeader('Cache-Control', 'no-cache, must-revalidate');
+                $response->setHeader('Content-Type', "text/json; charset={$output_encode}");
+                break;
+            default:
+                throw new ViewException(
+                    'view type not support: ' . $this->_view_type,
+                    ExceptionCode::VIEW_TYPE_NOT_SUPPORT
+                );
         }
         // output contents
         $output = $this->_view->render($this->_view_file_path, $this->_view_param, $this->_cache_param);
@@ -276,8 +310,8 @@ abstract class Controller {
      * @param  string $action_method
      * @return string
      */
-    protected function getViewFilePath($module, $controller_class, $action_method) {
-
+    protected function getViewFilePath($module, $controller_class, $action_method)
+    {
         $controller_class = lcfirst(substr($controller_class, strrpos($controller_class, '\\') + 1, -10));
         return "{$module}/{$controller_class}/{$action_method}.tpl";
     }
@@ -287,9 +321,21 @@ abstract class Controller {
      * @param string $action_method
      * @param array | null $param
      */
-    final public function renderController($controller_class, $action_method, array $param = null) {
-
+    final public function renderController(
+        $module,
+        $controller = null,
+        $action_method = null,
+        array $param = null
+    ) {
         global $GLOBAL;
+        if ($controller === null) {
+            $controller = 'Index';
+        }
+        $controller       = ucfirst($controller);
+        $controller_class = "\\{$module}\\controller\\{$controller}Controller";
+        if ($action_method === null) {
+            $action_method = 'index';
+        }
         $GLOBAL['controller_class'] = $controller_class;
         $GLOBAL['action_method']    = $action_method;
         // mark render controller
@@ -302,7 +348,8 @@ abstract class Controller {
      * @param string $url
      * @param mixed $params
      */
-    final protected function redirect($url, $params = null) {
+    final protected function redirect($url, $params = null)
+    {
         redirect($url, $params);
     }
     /**
@@ -310,26 +357,42 @@ abstract class Controller {
      * default: find ErrorController under the same directory
      * @param Exception $e
      */
-    final public function renderError($e) {
-
-        $class_name       = get_class($this);
-        $module_name      = ucfirst(substr($class_name, 0, strpos($class_name, '\\')));
-        $error_controller = preg_replace('#\w+$#', $module_name . 'ErrorController', $class_name);
-        $this->renderController($error_controller, 'handle', ['render_error_exception' => $e]);
+    final public function renderError($e)
+    {
+        $class_name = get_class($this);
+        $module     = ucfirst(substr($class_name, 0, strpos($class_name, '\\')));
+        $this->renderController(
+            $module,
+            'Error',
+            'handle',
+            ['render_error_exception' => $e]
+        );
     }
     /**
      * get is ajax request
      * @return boolean
      */
-    final public function isAjaxRequest() {
+    final public function isAjaxRequest()
+    {
         return Request::isAjaxRequest();
+    }
+    /**
+     * check request method
+     *
+     * @int $request_method
+     * @return boolean
+     */
+    final public function isRequestMethod($request_method)
+    {
+        return Request::getRequestMethod() === $request_method;
     }
     /**
      * get error message
      * @param  int $error_code
      * @return string
      */
-    protected function getErrorMessage($error_code) {
+    protected function getErrorMessage($error_code)
+    {
         return $this->_error_message->getErrorMessage($error_code);
     }
     /**
@@ -337,27 +400,30 @@ abstract class Controller {
      * @param string $name
      * @param array $arguments
      */
-    final public function __call($name, $arguments) {
+    final public function __call($name, $arguments)
+    {
         throw new AppException('action not callable:' . $name, ExceptionCode::APP_ACTION_NOT_CALLABLE);
     }
     /**
      * __destruct
      */
-    public function __destruct() {
+    public function __destruct()
+    {
         $this->clearControllerVariables();
     }
     /**
      * [__clone description]
      */
-    public function __clone() {
+    public function __clone()
+    {
         $this->clearControllerVariables();
     }
     /**
      * convert method name to method name in use
      *  ax_bx_cx -> aBxCx
      */
-    private function convertMethodName($method_name) {
-
+    private function convertMethodName($method_name)
+    {
         if (!preg_match('#^([a-z]+_)+[a-z]+$#', $method_name)) {
             return $method_name;
         }
@@ -373,8 +439,8 @@ abstract class Controller {
     /**
      * clear all controller variables
      */
-    private function clearControllerVariables() {
-
+    private function clearControllerVariables()
+    {
         $this->_cache_param              = null;
         $this->_controller_render_params = null;
         $this->_request                  = null;
@@ -382,6 +448,40 @@ abstract class Controller {
         $this->_view_file_path           = null;
         $this->_view_param               = null;
         $this->_view_type                = null;
+    }
+    /**
+     * put var to map
+     * @param  Map &$map
+     * @param  string $key
+     * @param  mixed $val
+     * @param  bool $is_force
+     */
+    protected function putVarToMap(&$map, $key, $val, $is_force = true)
+    {
+        if ($is_force) {
+            $map[$key] = $val;
+            return;
+        }
+        if ($val !== null) {
+            $map[$key] = $val;
+        }
+    }
+    /**
+     * put var to map
+     * @param  Map &$map
+     * @param  string $key
+     * @param  mixed $val
+     * @param  bool $is_force
+     */
+    protected function putVarToMapNotEmpty(&$map, $key, $val, $is_force = false)
+    {
+        if ($is_force) {
+            $map[$key] = $val;
+            return;
+        }
+        if (!empty($val)) {
+            $map[$key] = $val;
+        }
     }
     /**
      * validate parameter
@@ -392,8 +492,8 @@ abstract class Controller {
      * @param string $reg
      * @return boolean
      */
-    protected function validate($variable_name, $value, $rule, $type, $reg = null) {
-
+    protected function validate($variable_name, $value, $rule, $type, $reg = null)
+    {
         $validate_result_list = $this->_validator->validate([
             $variable_name => [
                 'value' => $value,
@@ -433,24 +533,32 @@ abstract class Controller {
      *     ...
      * )
      */
-    protected function validateDataMap($validate_data_map) {
+    protected function validateDataMap($validate_data_map)
+    {
         return $this->_validator->validate($validate_data_map);
     }
     /**
      * prefilter
      */
-    public function preFilter() {}
+    public function preFilter($module, $action_method)
+    {
+    }
     /**
      * postfilter
      */
-    public function postFilter() {}
+    public function postFilter($module, $action_method)
+    {
+    }
     /**
      * preRender
      */
-    public function preRender() {}
+    public function preRender($module, $action_method)
+    {
+    }
     /**
      * postRender
      */
-    public function postRender() {}
-
+    public function postRender($module, $action_method)
+    {
+    }
 }

@@ -1,7 +1,7 @@
 # Framework (Web)
 =====================
 Framework for web server. A pure MVC(Model-View-Controller) build framework with
-module support.
+module support. 
 
 ## Environment
 - linux is recommanded
@@ -10,15 +10,15 @@ module support.
 ## Features
 ```
 - MVC
-- Multiple database support(Mysql, postgreSQL)
-- Configurable database sharding(Partition Support)
-- Master-slave support
-- 1 master with N slaves framework level load banlance
-- Multiple cache support(memcached, redis)
-- Search engine support(solr)
-- Multiple view support(html, json)
-- Maintenance mode
-- Simple job queue
+- multiple database support(Mysql, postgreSQL)
+- configurable database sharding
+- master-slave support
+- 1 master with N slaves load banlance
+- multiple cache support(memcached, redis)
+- search engine support(solr)
+- multiple language
+- multiple output(html, json)
+- maintenance time setable
 ```
 
 ## Need PHP Modules
@@ -41,31 +41,31 @@ disk and make a symbolic link to your lib directory
 ```
 directory structure
 / project folder
-|-- lib                             <- framework, library folder, make sure your libraries put here
-|-- protected                       <- source code
-|   |-- config                      <- config
-|   |   |-- common                  <- common part
-|   |   |-- develop                 <- develop
-|   |   |-- staging                 <- staging
-|   |   |-- production              <- production
+|-- lib             <- framework, library folder, make sure your libraries put here
+|-- protected       <- source code
+|   |-- config      <- config
+|   |   |-- common  <- common part
+|   |   |-- develop <- develop
+|   |   |-- staging <- staging
+|   |   |-- production <- production
 |   |
-|   |-- modules                     <- modules
+|   |-- modules      <- modules
 |   |   |-- testModule
-|   |       |-- controller          <- controller
-|   |       |-- model               <- business model
-|   |       |-- logic               <- business logic
-|   |-- plugins                     <- customize plugins
-|   |-- script                      <- batch scripts
-|   |-- sql                         <- sql scripts
-|   |-- view                        <- view folder
+|   |       |-- controller
+|   |       |-- model
+|   |       |-- logic
+|   |-- plugins      <- customize plugins
+|   |-- script       <- batch scripts
+|   |-- sql          <- sql scripts
+|   |-- view         <- view folder 
 |
-|-- Crawler.php                     <- main Application class
-|-- bootstrap.php                   <- php settings or other
-|-- public                          <- open for public(Document Root)
+|-- Crawler.php      <- main class
+|-- bootstrap.php    <- php settings or other
+|-- public           <- open for public
     |-- index.php
-    |-- img                         <- images files
-    |-- css                         <-- css files
-    |-- js                          <-- javascript files
+    |-- img          <- images files
+    |-- css          <-- css files
+    |-- js           <-- javascript files
 ```
 
 example:
