@@ -1,0 +1,13 @@
+{
+    "name": "james/lightmvc",
+    "description": "a light mvc web framework for fast building web and batch application",
+    "type": "library",
+    "license": "Apache License, Version 2.0",
+    "authors": [
+        {
+            "name": "koketsu",
+            "email": "jameslittle.private@gmail.com"
+        }
+    ],
+    "require": {}
+}
